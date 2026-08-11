@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import type { UserRecord, UsersRepository } from './users.repository';
@@ -25,6 +29,27 @@ describe('AuthService', () => {
         Promise.resolve(
           [...users.values()].filter((user) => user.managerId === managerId),
         ),
+      updatePasswordHash: (id: string, passwordHash: string) => {
+        const user = [...users.values()].find(
+          (candidate) => candidate.id === id,
+        );
+        if (user) user.passwordHash = passwordHash;
+        return Promise.resolve();
+      },
+      updateFieldAgentPasswordHash: (
+        managerId: string,
+        agentId: string,
+        passwordHash: string,
+      ) => {
+        const user = [...users.values()].find(
+          (candidate) =>
+            candidate.id === agentId &&
+            candidate.managerId === managerId &&
+            candidate.role === 'field_agent',
+        );
+        if (user) user.passwordHash = passwordHash;
+        return Promise.resolve(Boolean(user));
+      },
     } as UsersRepository;
     authService = new AuthService(
       usersRepository,
@@ -106,5 +131,75 @@ describe('AuthService', () => {
       user: { email: account.email, role: 'field_agent' },
     });
     expect(typeof login.token).toBe('string');
+  });
+
+  it('lets a user replace their password after verifying the current one', async () => {
+    const registered = await authService.register(registration);
+    const newPassword = 'YeniGuvenli2026!';
+
+    await expect(
+      authService.changePassword(registered.user.id, {
+        currentPassword: registration.password,
+        newPassword,
+      }),
+    ).resolves.toEqual({ message: 'Parolanız başarıyla değiştirildi.' });
+
+    await expect(
+      authService.login({
+        email: registration.email,
+        password: registration.password,
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      authService.login({ email: registration.email, password: newPassword }),
+    ).resolves.toMatchObject({ user: { email: registration.email } });
+  });
+
+  it('rejects a password change when the current password is wrong', async () => {
+    const registered = await authService.register(registration);
+
+    await expect(
+      authService.changePassword(registered.user.id, {
+        currentPassword: 'yanlis-parola',
+        newPassword: 'YeniGuvenli2026!',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('lets a manager reset only their own field agent password', async () => {
+    const manager = await authService.register(registration);
+    const otherManager = await authService.register({
+      ...registration,
+      email: 'diger@taskfield.com',
+    });
+    const account = {
+      firstName: 'Ece',
+      lastName: 'Yılmaz',
+      email: 'ece@taskfield.com',
+      password: 'Saha2026!',
+    };
+    const created = await authService.createFieldAgent(
+      manager.user.id,
+      account,
+    );
+    const newPassword = 'YeniSaha2026!';
+
+    await expect(
+      authService.resetFieldAgentPassword(manager.user.id, created.user.id, {
+        password: newPassword,
+      }),
+    ).resolves.toEqual({
+      message: 'Çalışanın parolası başarıyla güncellendi.',
+    });
+    await expect(
+      authService.login({ email: account.email, password: newPassword }),
+    ).resolves.toMatchObject({ user: { id: created.user.id } });
+    await expect(
+      authService.resetFieldAgentPassword(
+        otherManager.user.id,
+        created.user.id,
+        { password: 'BaskaParola2026!' },
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

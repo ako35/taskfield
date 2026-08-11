@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -24,6 +25,11 @@ export interface LoginInput {
   password?: unknown;
 }
 
+export interface ChangePasswordInput {
+  currentPassword?: unknown;
+  newPassword?: unknown;
+}
+
 export interface PublicUser {
   id: string;
   firstName: string;
@@ -39,6 +45,10 @@ export interface CreateFieldAgentInput {
   firstName?: unknown;
   lastName?: unknown;
   email?: unknown;
+  password?: unknown;
+}
+
+export interface ResetFieldAgentPasswordInput {
   password?: unknown;
 }
 
@@ -101,6 +111,30 @@ export class AuthService {
     return this.createAuthResult(user);
   }
 
+  async changePassword(userId: string, input: ChangePasswordInput) {
+    const currentPassword = this.validPassword(input.currentPassword);
+    const newPassword = this.validPassword(input.newPassword);
+    const user = await this.usersRepository.findById(userId);
+
+    if (
+      !user ||
+      !(await this.verifyPassword(currentPassword, user.passwordHash))
+    ) {
+      throw new UnauthorizedException('Mevcut parola hatalı.');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'Yeni parola mevcut paroladan farklı olmalıdır.',
+      );
+    }
+
+    await this.usersRepository.updatePasswordHash(
+      user.id,
+      await this.hashPassword(newPassword),
+    );
+    return { message: 'Parolanız başarıyla değiştirildi.' };
+  }
+
   async createFieldAgent(managerId: string, input: CreateFieldAgentInput) {
     const manager = await this.usersRepository.findById(managerId);
     if (!manager || manager.role !== 'regional_manager') {
@@ -143,6 +177,23 @@ export class AuthService {
     const users =
       await this.usersRepository.findFieldAgentsByManager(managerId);
     return { users: users.map((user) => this.toPublicUser(user)) };
+  }
+
+  async resetFieldAgentPassword(
+    managerId: string,
+    agentId: string,
+    input: ResetFieldAgentPasswordInput,
+  ) {
+    const password = this.validPassword(input.password);
+    const updated = await this.usersRepository.updateFieldAgentPasswordHash(
+      managerId,
+      agentId,
+      await this.hashPassword(password),
+    );
+    if (!updated) {
+      throw new NotFoundException('Saha çalışanı hesabı bulunamadı.');
+    }
+    return { message: 'Çalışanın parolası başarıyla güncellendi.' };
   }
 
   private requiredText(

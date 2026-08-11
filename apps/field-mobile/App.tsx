@@ -29,37 +29,15 @@ interface MobileUser {
   role: "field_agent";
 }
 
-const route: Array<{
-  time: string;
-  customer: string;
+interface VisitAssignment {
+  id: string;
+  customerName: string;
   district: string;
+  address: string;
+  scheduledAt: string;
+  notes: string | null;
   status: VisitStatus;
-}> = [
-  {
-    time: "09:15",
-    customer: "Pati Dünyası",
-    district: "Kadıköy",
-    status: "completed",
-  },
-  {
-    time: "10:30",
-    customer: "Vetline Klinik",
-    district: "Ataşehir",
-    status: "in_progress",
-  },
-  {
-    time: "12:00",
-    customer: "Can Dostlar Pet",
-    district: "Üsküdar",
-    status: "planned",
-  },
-  {
-    time: "14:30",
-    customer: "Pet Gross",
-    district: "Maltepe",
-    status: "planned",
-  },
-];
+}
 
 const labels: Record<VisitStatus, string> = {
   planned: "Planlandı",
@@ -188,62 +166,142 @@ function LoginScreen({ onLogin }: { onLogin: (user: MobileUser) => void }) {
 
 function FieldDashboard({
   user,
-  onLogout,
+  onOpenProfile,
+  onSessionExpired,
 }: {
   user: MobileUser;
-  onLogout: () => void;
+  onOpenProfile: () => void;
+  onSessionExpired: () => void;
 }) {
+  const [route, setRoute] = useState<VisitAssignment[]>([]);
+  const [routeLoading, setRouteLoading] = useState(true);
+  const [routeError, setRouteError] = useState("");
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toLocaleUpperCase(
     "tr-TR",
   );
+  const completedVisits = route.filter(
+    (visit) => visit.status === "completed",
+  ).length;
+  const completionRate = route.length
+    ? Math.round((completedVisits / route.length) * 100)
+    : 0;
+
+  useEffect(() => {
+    async function loadRoute() {
+      try {
+        const token = await SecureStore.getItemAsync("taskfield_mobile_token");
+        if (!token) {
+          onSessionExpired();
+          return;
+        }
+        const response = await fetch(`${API_URL}/visits`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.status === 401) {
+          onSessionExpired();
+          return;
+        }
+        const result = (await response.json()) as {
+          visits?: VisitAssignment[];
+          message?: string | string[];
+        };
+        if (!response.ok) {
+          const message = Array.isArray(result.message)
+            ? result.message.join(" ")
+            : result.message;
+          setRouteError(message ?? "Ziyaretler yüklenemedi.");
+          return;
+        }
+        setRoute(result.visits ?? []);
+      } catch {
+        setRouteError("Ziyaretler için sunucuya ulaşılamadı.");
+      } finally {
+        setRouteLoading(false);
+      }
+    }
+    void loadRoute();
+  }, [onSessionExpired, user.id]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>PAZARTESİ, 10 AĞUSTOS</Text>
+            <Text style={styles.eyebrow}>
+              {new Date().toLocaleDateString("tr-TR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </Text>
             <Text style={styles.title}>Günaydın, {user.firstName}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Çıkış yap"
+            accessibilityLabel="Profili aç"
             style={styles.mobileProfile}
-            onPress={onLogout}
+            onPress={onOpenProfile}
           >
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
-            <Text style={styles.logoutText}>Çıkış</Text>
+            <Text style={styles.logoutText}>Profil</Text>
           </Pressable>
         </View>
         <View style={styles.syncBar}>
           <View style={styles.syncDot} />
-          <Text style={styles.syncText}>Tüm veriler güncel · 2 dk önce</Text>
+          <Text style={styles.syncText}>
+            {routeLoading ? "Atamalar yükleniyor" : "Ziyaret planın güncel"}
+          </Text>
         </View>
         <View style={styles.summary}>
           <View>
-            <Text style={styles.summaryLabel}>BUGÜNKÜ ROTA</Text>
-            <Text style={styles.summaryValue}>4 ziyaret</Text>
+            <Text style={styles.summaryLabel}>ATANAN ZİYARET</Text>
+            <Text style={styles.summaryValue}>{route.length} ziyaret</Text>
           </View>
           <View style={styles.divider} />
           <View>
             <Text style={styles.summaryLabel}>TAMAMLANAN</Text>
-            <Text style={styles.summaryValue}>1 / 4</Text>
+            <Text style={styles.summaryValue}>
+              {completedVisits} / {route.length}
+            </Text>
           </View>
           <View style={styles.progressTrack}>
-            <View style={styles.progressValue} />
+            <View
+              style={[styles.progressValue, { width: `${completionRate}%` }]}
+            />
           </View>
         </View>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Ziyaret planı</Text>
-          <Text style={styles.sectionLink}>Haritada gör</Text>
+          <Text style={styles.sectionLink}>{route.length} durak</Text>
         </View>
         <View style={styles.routeList}>
+          {routeLoading && (
+            <ActivityIndicator color="#285b43" style={styles.routeLoading} />
+          )}
+          {routeError ? (
+            <Text style={styles.routeError}>{routeError}</Text>
+          ) : null}
+          {!routeLoading && !routeError && route.length === 0 ? (
+            <View style={styles.emptyRoute}>
+              <Text style={styles.emptyRouteTitle}>Atanmış ziyaret yok</Text>
+              <Text style={styles.emptyRouteText}>
+                Yeni ziyaretler bölge müdürünüz tarafından atandığında burada
+                görünecek.
+              </Text>
+            </View>
+          ) : null}
           {route.map((visit, index) => (
-            <View style={styles.visit} key={visit.customer}>
+            <View style={styles.visit} key={visit.id}>
               <View style={styles.timeColumn}>
-                <Text style={styles.time}>{visit.time}</Text>
+                <Text style={styles.time}>
+                  {new Date(visit.scheduledAt).toLocaleTimeString("tr-TR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
                 <View
                   style={[
                     styles.routeDot,
@@ -260,15 +318,23 @@ function FieldDashboard({
               >
                 <View style={styles.visitTop}>
                   <View>
-                    <Text style={styles.customer}>{visit.customer}</Text>
+                    <Text style={styles.customer}>{visit.customerName}</Text>
                     <Text style={styles.district}>
-                      {visit.district} · Pet Shop
+                      {visit.district} ·{" "}
+                      {new Date(visit.scheduledAt).toLocaleDateString("tr-TR", {
+                        day: "numeric",
+                        month: "short",
+                      })}
                     </Text>
                   </View>
                   <Text style={[styles.badge, styles[visit.status]]}>
                     {labels[visit.status]}
                   </Text>
                 </View>
+                <Text style={styles.visitAddress}>{visit.address}</Text>
+                {visit.notes ? (
+                  <Text style={styles.visitNote}>{visit.notes}</Text>
+                ) : null}
                 {visit.status === "in_progress" && (
                   <Pressable style={styles.primaryButton}>
                     <Text style={styles.primaryButtonText}>
@@ -285,8 +351,165 @@ function FieldDashboard({
   );
 }
 
+function ProfileScreen({
+  user,
+  onBack,
+  onLogout,
+}: {
+  user: MobileUser;
+  onBack: () => void;
+  onLogout: () => void;
+}) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function changePassword() {
+    setError("");
+    setSuccess("");
+    if (
+      currentPassword.length < 8 ||
+      newPassword.length < 8 ||
+      newPassword.length > 128
+    ) {
+      setError("Parolalar 8-128 karakter olmalıdır.");
+      return;
+    }
+    if (newPassword !== confirmation) {
+      setError("Yeni parola ve tekrarı eşleşmiyor.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const token = await SecureStore.getItemAsync("taskfield_mobile_token");
+      if (!token) {
+        setError("Oturumunuz bulunamadı. Lütfen yeniden giriş yapın.");
+        return;
+      }
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const result = (await response.json()) as {
+        message?: string | string[];
+      };
+      if (!response.ok) {
+        const message = Array.isArray(result.message)
+          ? result.message.join(" ")
+          : result.message;
+        setError(message ?? "Parola değiştirilemedi.");
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmation("");
+      setSuccess(result.message as string);
+    } catch {
+      setError("Sunucuya ulaşılamadı. Lütfen tekrar deneyin.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <SafeAreaView style={styles.profileSafeArea}>
+      <StatusBar style="dark" />
+      <KeyboardAvoidingView
+        style={styles.profileKeyboard}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.profileContainer}>
+          <Pressable accessibilityRole="button" onPress={onBack}>
+            <Text style={styles.backButton}>‹ Geri</Text>
+          </Pressable>
+          <Text style={styles.profileEyebrow}>HESAP AYARLARI</Text>
+          <Text style={styles.profileTitle}>Profil</Text>
+          <View style={styles.identityPanel}>
+            <Text style={styles.identityName}>
+              {user.firstName} {user.lastName}
+            </Text>
+            <Text style={styles.identityEmail}>{user.email}</Text>
+            <Text style={styles.identityRole}>Saha çalışanı</Text>
+          </View>
+          <View style={styles.passwordPanel}>
+            <Text style={styles.passwordTitle}>Parolanı değiştir</Text>
+            <Text style={styles.passwordDescription}>
+              Bölge müdürünüzün verdiği mevcut parolayı doğrulayarak yeni bir
+              parola belirleyin.
+            </Text>
+            <Text style={styles.profileInputLabel}>Mevcut parola</Text>
+            <TextInput
+              style={styles.profileInput}
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+              autoComplete="current-password"
+            />
+            <Text style={styles.profileInputLabel}>Yeni parola</Text>
+            <TextInput
+              style={styles.profileInput}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              autoComplete="new-password"
+              placeholder="En az 8 karakter"
+              placeholderTextColor="#8c968f"
+            />
+            <Text style={styles.profileInputLabel}>Yeni parola tekrar</Text>
+            <TextInput
+              style={styles.profileInput}
+              value={confirmation}
+              onChangeText={setConfirmation}
+              secureTextEntry
+              autoComplete="new-password"
+              onSubmitEditing={() => void changePassword()}
+            />
+            {error ? <Text style={styles.profileError}>{error}</Text> : null}
+            {success ? (
+              <Text style={styles.profileSuccess}>{success}</Text>
+            ) : null}
+            <Pressable
+              style={({ pressed }) => [
+                styles.savePasswordButton,
+                pressed && styles.savePasswordButtonPressed,
+                submitting && styles.loginButtonDisabled,
+              ]}
+              disabled={submitting}
+              onPress={() => void changePassword()}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.savePasswordButtonText}>
+                  Parolayı güncelle
+                </Text>
+              )}
+            </Pressable>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.profileLogoutButton}
+            onPress={onLogout}
+          >
+            <Text style={styles.profileLogoutText}>Oturumu kapat</Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState<MobileUser | null>(null);
+  const [screen, setScreen] = useState<"dashboard" | "profile">("dashboard");
   const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
@@ -313,6 +536,7 @@ export default function App() {
       SecureStore.deleteItemAsync("taskfield_mobile_user"),
     ]);
     setUser(null);
+    setScreen("dashboard");
   }
 
   if (restoring) {
@@ -323,7 +547,22 @@ export default function App() {
     );
   }
   if (!user) return <LoginScreen onLogin={setUser} />;
-  return <FieldDashboard user={user} onLogout={() => void logout()} />;
+  if (screen === "profile") {
+    return (
+      <ProfileScreen
+        user={user}
+        onBack={() => setScreen("dashboard")}
+        onLogout={() => void logout()}
+      />
+    );
+  }
+  return (
+    <FieldDashboard
+      user={user}
+      onOpenProfile={() => setScreen("profile")}
+      onSessionExpired={() => void logout()}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -413,6 +652,100 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 9,
   },
+  profileSafeArea: { flex: 1, backgroundColor: "#f4f5f1" },
+  profileKeyboard: { flex: 1 },
+  profileContainer: { padding: 22, paddingBottom: 44 },
+  backButton: { color: "#285b43", fontSize: 12, fontWeight: "700" },
+  profileEyebrow: {
+    marginTop: 30,
+    color: "#788078",
+    fontSize: 9,
+    fontWeight: "800",
+  },
+  profileTitle: {
+    marginTop: 6,
+    color: "#1d2922",
+    fontFamily: "serif",
+    fontSize: 30,
+    fontWeight: "600",
+  },
+  identityPanel: {
+    marginTop: 18,
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#d7dbd4",
+  },
+  identityName: { color: "#1d2922", fontSize: 16, fontWeight: "700" },
+  identityEmail: { marginTop: 5, color: "#687169", fontSize: 11 },
+  identityRole: {
+    alignSelf: "flex-start",
+    marginTop: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#e1efe6",
+    color: "#26734e",
+    fontSize: 8,
+    fontWeight: "700",
+  },
+  passwordPanel: { marginTop: 28 },
+  passwordTitle: { color: "#1d2922", fontSize: 17, fontWeight: "700" },
+  passwordDescription: {
+    marginTop: 7,
+    marginBottom: 22,
+    color: "#687169",
+    fontSize: 10,
+    lineHeight: 16,
+  },
+  profileInputLabel: {
+    marginBottom: 7,
+    color: "#374039",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  profileInput: {
+    height: 48,
+    marginBottom: 15,
+    paddingHorizontal: 13,
+    borderWidth: 1,
+    borderColor: "#c8cec8",
+    borderRadius: 6,
+    backgroundColor: "#fff",
+    color: "#1d2922",
+    fontSize: 13,
+  },
+  profileError: {
+    marginBottom: 14,
+    color: "#a7473c",
+    fontSize: 10,
+    lineHeight: 15,
+  },
+  profileSuccess: {
+    marginBottom: 14,
+    color: "#26734e",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  savePasswordButton: {
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+    backgroundColor: "#285b43",
+  },
+  savePasswordButtonPressed: { backgroundColor: "#173d2d" },
+  savePasswordButtonText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  profileLogoutButton: {
+    alignItems: "center",
+    marginTop: 36,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#d7dbd4",
+  },
+  profileLogoutText: { color: "#a7473c", fontSize: 11, fontWeight: "700" },
   safeArea: { flex: 1, backgroundColor: "#f4f5f1" },
   container: { padding: 22, paddingBottom: 48 },
   header: {
@@ -484,6 +817,34 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: "#1d2922", fontSize: 16, fontWeight: "700" },
   sectionLink: { color: "#285b43", fontSize: 11, fontWeight: "700" },
+  routeLoading: { marginVertical: 30 },
+  routeError: {
+    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: "#a7473c",
+    backgroundColor: "#f2e4e2",
+    color: "#893c34",
+    fontSize: 10,
+    lineHeight: 16,
+  },
+  emptyRoute: {
+    paddingVertical: 38,
+    paddingHorizontal: 22,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#dde0d9",
+    borderRadius: 7,
+    backgroundColor: "#fff",
+  },
+  emptyRouteTitle: { color: "#20251f", fontSize: 14, fontWeight: "700" },
+  emptyRouteText: {
+    maxWidth: 270,
+    marginTop: 7,
+    color: "#7b8179",
+    textAlign: "center",
+    fontSize: 9,
+    lineHeight: 15,
+  },
   routeList: { gap: 0 },
   visit: { flexDirection: "row", minHeight: 103 },
   timeColumn: { width: 52, alignItems: "flex-start", position: "relative" },
@@ -522,6 +883,22 @@ const styles = StyleSheet.create({
   visitTop: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
   customer: { color: "#20251f", fontSize: 13, fontWeight: "700" },
   district: { color: "#7b8179", fontSize: 9, marginTop: 4 },
+  visitAddress: {
+    marginTop: 10,
+    color: "#535c55",
+    fontSize: 9,
+    lineHeight: 14,
+  },
+  visitNote: {
+    marginTop: 7,
+    paddingTop: 7,
+    borderTopWidth: 1,
+    borderTopColor: "#eceee9",
+    color: "#7b8179",
+    fontSize: 9,
+    fontStyle: "italic",
+    lineHeight: 14,
+  },
   badge: {
     alignSelf: "flex-start",
     paddingHorizontal: 7,

@@ -138,6 +138,26 @@ export class UsersRepository implements OnModuleInit, OnModuleDestroy {
     return user;
   }
 
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    await this.pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [
+      passwordHash,
+      id,
+    ]);
+  }
+
+  async updateFieldAgentPasswordHash(
+    managerId: string,
+    agentId: string,
+    passwordHash: string,
+  ): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE users SET password_hash = $1
+       WHERE id = $2 AND manager_id = $3 AND role = 'field_agent'`,
+      [passwordHash, agentId, managerId],
+    );
+    return result.rowCount === 1;
+  }
+
   async onModuleDestroy() {
     await this.pool.end();
   }

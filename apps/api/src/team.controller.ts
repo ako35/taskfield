@@ -3,12 +3,18 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import type { CreateFieldAgentInput } from './auth.service';
+import type {
+  CreateFieldAgentInput,
+  ResetFieldAgentPasswordInput,
+} from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
 
@@ -30,6 +36,20 @@ export class TeamController {
   ) {
     this.assertManager(request);
     return this.authService.createFieldAgent(request.user.id, input);
+  }
+
+  @Patch(':agentId/password')
+  resetPassword(
+    @Req() request: AuthenticatedRequest,
+    @Param('agentId', new ParseUUIDPipe()) agentId: string,
+    @Body() input: ResetFieldAgentPasswordInput,
+  ) {
+    this.assertManager(request);
+    return this.authService.resetFieldAgentPassword(
+      request.user.id,
+      agentId,
+      input,
+    );
   }
 
   private assertManager(request: AuthenticatedRequest) {

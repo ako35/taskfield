@@ -8,6 +8,9 @@ import { AuthService } from './auth.service';
 import { UsersRepository } from './users.repository';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { TeamController } from './team.controller';
+import { VisitsController } from './visits.controller';
+import { VisitsRepository } from './visits.repository';
+import { VisitsService } from './visits.service';
 
 @Module({
   imports: [
@@ -21,7 +24,19 @@ import { TeamController } from './team.controller';
       signOptions: { expiresIn: '12h' },
     }),
   ],
-  controllers: [AppController, AuthController, TeamController],
-  providers: [AppService, AuthService, UsersRepository, JwtAuthGuard],
+  controllers: [
+    AppController,
+    AuthController,
+    TeamController,
+    VisitsController,
+  ],
+  providers: [
+    AppService,
+    AuthService,
+    UsersRepository,
+    VisitsRepository,
+    VisitsService,
+    JwtAuthGuard,
+  ],
 })
 export class AppModule {}
