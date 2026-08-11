@@ -36,6 +36,8 @@ describe('VisitsService', () => {
           customerName: 'Pati Dünyası',
           district: 'Kadıköy',
           address: 'Bağdat Caddesi No: 120 Kadıköy, İstanbul',
+          latitude: 40.9876,
+          longitude: 29.0254,
         };
         visits.push(created);
         return Promise.resolve(created);

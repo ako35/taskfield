@@ -13,6 +13,8 @@ export interface VisitRecord {
   customerName: string;
   district: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   scheduledAt: string;
   notes: string | null;
   status: VisitStatus;
@@ -29,6 +31,8 @@ interface VisitRow {
   customer_name: string;
   district: string;
   address: string;
+  latitude: string | number | null;
+  longitude: string | number | null;
   scheduled_at: Date | string;
   notes: string | null;
   status: VisitStatus;
@@ -63,6 +67,8 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
         customer_name VARCHAR(120) NOT NULL,
         district VARCHAR(80) NOT NULL,
         address VARCHAR(300) NOT NULL,
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION,
         scheduled_at TIMESTAMPTZ NOT NULL,
         notes VARCHAR(500),
         status VARCHAR(30) NOT NULL DEFAULT 'planned'
@@ -72,7 +78,9 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
     `);
     await this.pool.query(
       `ALTER TABLE visit_assignments
-       ADD COLUMN IF NOT EXISTS customer_id UUID`,
+       ADD COLUMN IF NOT EXISTS customer_id UUID,
+       ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+       ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION`,
     );
     await this.pool.query(
       `CREATE INDEX IF NOT EXISTS visit_assignments_agent_schedule_idx
@@ -96,16 +104,20 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
       | 'customerName'
       | 'district'
       | 'address'
+      | 'latitude'
+      | 'longitude'
     > & { customerId: string },
   ): Promise<VisitRecord | null> {
     const result = await this.pool.query<VisitRow>(
       `WITH inserted AS (
          INSERT INTO visit_assignments (
            id, manager_id, field_agent_id, customer_id, customer_name,
-           district, address, scheduled_at, notes, status, created_at
+           district, address, latitude, longitude, scheduled_at, notes,
+           status, created_at
          )
          SELECT $1, $2, user_account.id, customer.id, customer.name,
-                customer.district, customer.address, $5, $6, $7, $8
+             customer.district, customer.address, customer.latitude,
+             customer.longitude, $5, $6, $7, $8
          FROM users user_account
          CROSS JOIN customers customer
          WHERE user_account.id = $3
@@ -170,6 +182,8 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
       customerName: row.customer_name,
       district: row.district,
       address: row.address,
+      latitude: this.toNumber(row.latitude),
+      longitude: this.toNumber(row.longitude),
       scheduledAt: this.toIsoString(row.scheduled_at),
       notes: row.notes,
       status: row.status,
@@ -179,5 +193,9 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
 
   private toIsoString(value: Date | string) {
     return value instanceof Date ? value.toISOString() : value;
+  }
+
+  private toNumber(value: string | number | null) {
+    return value === null ? null : Number(value);
   }
 }

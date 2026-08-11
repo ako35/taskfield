@@ -1,10 +1,11 @@
 import type { VisitStatus } from "@taskfield/domain";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { ArrowRight, MapPinned, Plus, Users } from "lucide-react";
+import { ArrowRight, MapPinned, Plus, Store, Users } from "lucide-react";
 import { FormMessage } from "../../components/FormMessage";
+import { LocationMap } from "../../components/LocationMap";
 import { PageHeader } from "../../components/PageHeader";
-import type { FieldAgent, VisitAssignment } from "../../types";
+import type { Customer, FieldAgent, VisitAssignment } from "../../types";
 
 const statusLabels: Record<VisitStatus, string> = {
   planned: "Planlandı",
@@ -19,13 +20,18 @@ export function VisitsManagement({
   onUnauthorized: () => void;
 }) {
   const [agents, setAgents] = useState<FieldAgent[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [assignments, setAssignments] = useState<VisitAssignment[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
   const token = localStorage.getItem("taskfield_token");
+  const selectedCustomer = customers.find(
+    (customer) => customer.id === selectedCustomerId,
+  );
 
   useEffect(() => {
     async function loadAssignmentData() {
@@ -35,13 +41,17 @@ export function VisitsManagement({
       }
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [teamResponse, visitsResponse] = await Promise.all([
-          fetch(`${apiUrl}/team`, { headers }),
-          fetch(`${apiUrl}/visits`, { headers }),
-        ]);
+        const [teamResponse, customersResponse, visitsResponse] =
+          await Promise.all([
+            fetch(`${apiUrl}/team`, { headers }),
+            fetch(`${apiUrl}/customers`, { headers }),
+            fetch(`${apiUrl}/visits`, { headers }),
+          ]);
         if (
           teamResponse.status === 401 ||
           teamResponse.status === 403 ||
+          customersResponse.status === 401 ||
+          customersResponse.status === 403 ||
           visitsResponse.status === 401 ||
           visitsResponse.status === 403
         ) {
@@ -52,13 +62,19 @@ export function VisitsManagement({
           users?: FieldAgent[];
           message?: string;
         };
+        const customersResult = (await customersResponse.json()) as {
+          customers?: Customer[];
+          message?: string;
+        };
         const visitsResult = (await visitsResponse.json()) as {
           visits?: VisitAssignment[];
           message?: string;
         };
         if (!teamResponse.ok) throw new Error(teamResult.message);
+        if (!customersResponse.ok) throw new Error(customersResult.message);
         if (!visitsResponse.ok) throw new Error(visitsResult.message);
         setAgents(teamResult.users ?? []);
+        setCustomers(customersResult.customers ?? []);
         setAssignments(visitsResult.visits ?? []);
       } catch (loadError) {
         setError(
@@ -94,9 +110,7 @@ export function VisitsManagement({
         },
         body: JSON.stringify({
           fieldAgentId: data.get("fieldAgentId"),
-          customerName: data.get("customerName"),
-          district: data.get("district"),
-          address: data.get("address"),
+          customerId: data.get("customerId"),
           scheduledAt: new Date(scheduledValue).toISOString(),
           notes: data.get("notes"),
         }),
@@ -127,6 +141,7 @@ export function VisitsManagement({
         `${result.visit.agentFirstName} için ziyaret ataması oluşturuldu.`,
       );
       form.reset();
+      setSelectedCustomerId("");
     } catch {
       setError("API'ye ulaşılamadı. Lütfen tekrar deneyin.");
     } finally {
@@ -222,11 +237,23 @@ export function VisitsManagement({
               <p>Müşteri ve rota bilgilerini girin</p>
             </div>
           </div>
-          {agents.length === 0 && !loading ? (
+          {(agents.length === 0 || customers.length === 0) && !loading ? (
             <div className="assignment-no-team">
-              <Users size={20} />
-              <strong>Önce saha ekibi oluşturun</strong>
-              <p>Ziyaret atamak için en az bir ekip üyesi gereklidir.</p>
+              {customers.length === 0 ? (
+                <Store size={20} />
+              ) : (
+                <Users size={20} />
+              )}
+              <strong>
+                {customers.length === 0
+                  ? "Önce müşteri tanımlayın"
+                  : "Önce saha ekibi oluşturun"}
+              </strong>
+              <p>
+                {customers.length === 0
+                  ? "Ziyaret atamak için Müşteriler bölümünden en az bir müşteri ekleyin."
+                  : "Ziyaret atamak için en az bir ekip üyesi gereklidir."}
+              </p>
             </div>
           ) : (
             <form onSubmit={createAssignment} noValidate>
@@ -244,40 +271,53 @@ export function VisitsManagement({
                 </select>
               </label>
               <label>
-                Müşteri adı
-                <input
-                  name="customerName"
+                Müşteri
+                <select
+                  name="customerId"
                   required
-                  minLength={2}
-                  maxLength={120}
-                  placeholder="Pati Dünyası"
-                />
+                  value={selectedCustomerId}
+                  onChange={(event) =>
+                    setSelectedCustomerId(event.target.value)
+                  }
+                >
+                  <option value="" disabled>
+                    Kayıtlı müşteri seçin
+                  </option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name} · {customer.district}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <div className="field-row">
-                <label>
-                  İlçe / Bölge
-                  <input
-                    name="district"
-                    required
-                    minLength={2}
-                    maxLength={80}
-                    placeholder="Kadıköy"
-                  />
-                </label>
-                <label>
-                  Tarih ve saat
-                  <input name="scheduledAt" type="datetime-local" required />
-                </label>
-              </div>
+              {selectedCustomer && (
+                <div className="visit-customer-location">
+                  <div className="selected-customer-summary">
+                    <MapPinned size={15} />
+                    <div>
+                      <strong>{selectedCustomer.district}</strong>
+                      <span>{selectedCustomer.address}</span>
+                    </div>
+                  </div>
+                  {selectedCustomer.latitude !== null &&
+                  selectedCustomer.longitude !== null ? (
+                    <LocationMap
+                      position={{
+                        latitude: selectedCustomer.latitude,
+                        longitude: selectedCustomer.longitude,
+                      }}
+                      label={`${selectedCustomer.name} harita konumu`}
+                    />
+                  ) : (
+                    <p className="map-missing-location">
+                      Bu eski müşteri kaydında harita konumu bulunmuyor.
+                    </p>
+                  )}
+                </div>
+              )}
               <label>
-                Açık adres
-                <textarea
-                  name="address"
-                  required
-                  minLength={5}
-                  maxLength={300}
-                  placeholder="Mahalle, cadde, bina numarası"
-                />
+                Tarih ve saat
+                <input name="scheduledAt" type="datetime-local" required />
               </label>
               <label>
                 Ziyaret notu

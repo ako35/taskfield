@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { CustomersRepository } from './customers.repository';
@@ -13,6 +14,8 @@ export interface CreateCustomerInput {
   email?: unknown;
   district?: unknown;
   address?: unknown;
+  latitude?: unknown;
+  longitude?: unknown;
   notes?: unknown;
 }
 
@@ -24,24 +27,51 @@ export class CustomersService {
     const customer = {
       id: randomUUID(),
       managerId,
-      name: this.text(input.name, 'Müşteri adı', 2, 120),
-      contactName: this.text(input.contactName, 'Yetkili kişi', 2, 120),
-      phone: this.phone(input.phone),
-      email: this.email(input.email),
-      district: this.text(input.district, 'İlçe', 2, 80),
-      address: this.text(input.address, 'Açık adres', 5, 300),
-      notes: this.optionalText(input.notes, 'Not', 500),
+      ...this.validatedCustomer(input),
       createdAt: new Date().toISOString(),
     };
 
     try {
       return { customer: await this.customersRepository.create(customer) };
     } catch (error) {
-      if (this.isUniqueViolation(error)) {
-        throw new ConflictException('Bu müşteri bölgenizde zaten tanımlı.');
-      }
+      this.throwIfDuplicate(error);
       throw error;
     }
+  }
+
+  async update(
+    managerId: string,
+    customerId: string,
+    input: CreateCustomerInput,
+  ) {
+    try {
+      const customer = await this.customersRepository.update(
+        customerId,
+        managerId,
+        this.validatedCustomer(input),
+      );
+      if (!customer) {
+        throw new NotFoundException('Müşteri bölgenizde bulunamadı.');
+      }
+      return { customer };
+    } catch (error) {
+      this.throwIfDuplicate(error);
+      throw error;
+    }
+  }
+
+  private validatedCustomer(input: CreateCustomerInput) {
+    return {
+      name: this.text(input.name, 'Müşteri adı', 2, 120),
+      contactName: this.text(input.contactName, 'Yetkili kişi', 2, 120),
+      phone: this.phone(input.phone),
+      email: this.email(input.email),
+      district: this.text(input.district, 'İlçe', 2, 80),
+      address: this.text(input.address, 'Açık adres', 5, 300),
+      latitude: this.coordinate(input.latitude, 'Enlem', -90, 90),
+      longitude: this.coordinate(input.longitude, 'Boylam', -180, 180),
+      notes: this.optionalText(input.notes, 'Not', 500),
+    };
   }
 
   async list(managerId: string) {
@@ -87,6 +117,21 @@ export class CustomersService {
     return email;
   }
 
+  private coordinate(value: unknown, label: string, min: number, max: number) {
+    const coordinate =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string' && value.trim() !== ''
+          ? Number(value)
+          : Number.NaN;
+    if (!Number.isFinite(coordinate) || coordinate < min || coordinate > max) {
+      throw new BadRequestException(
+        `${label} için haritada geçerli bir konum seçin.`,
+      );
+    }
+    return coordinate;
+  }
+
   private isUniqueViolation(error: unknown) {
     return (
       typeof error === 'object' &&
@@ -94,5 +139,11 @@ export class CustomersService {
       'code' in error &&
       error.code === '23505'
     );
+  }
+
+  private throwIfDuplicate(error: unknown) {
+    if (this.isUniqueViolation(error)) {
+      throw new ConflictException('Bu müşteri bölgenizde zaten tanımlı.');
+    }
   }
 }

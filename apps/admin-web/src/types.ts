@@ -11,6 +11,8 @@ export interface Customer {
   email: string | null;
   district: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   notes: string | null;
   createdAt: string;
 }
@@ -26,11 +28,14 @@ export interface FieldAgent {
 export interface VisitAssignment {
   id: string;
   fieldAgentId: string;
+  customerId: string | null;
   agentFirstName: string;
   agentLastName: string;
   customerName: string;
   district: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   scheduledAt: string;
   notes: string | null;
   status: VisitStatus;

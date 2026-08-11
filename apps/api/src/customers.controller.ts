@@ -3,6 +3,9 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -30,6 +33,16 @@ export class CustomersController {
   ) {
     this.assertManager(request);
     return this.customersService.create(request.user.id, input);
+  }
+
+  @Patch(':customerId')
+  update(
+    @Req() request: AuthenticatedRequest,
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
+    @Body() input: CreateCustomerInput,
+  ) {
+    this.assertManager(request);
+    return this.customersService.update(request.user.id, customerId, input);
   }
 
   private assertManager(request: AuthenticatedRequest) {

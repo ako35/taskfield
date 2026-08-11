@@ -10,6 +10,8 @@ export interface CustomerRecord {
   email: string | null;
   district: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   notes: string | null;
   createdAt: string;
 }
@@ -23,6 +25,8 @@ interface CustomerRow {
   email: string | null;
   district: string;
   address: string;
+  latitude: string | number | null;
+  longitude: string | number | null;
   notes: string | null;
   created_at: Date | string;
 }
@@ -56,9 +60,16 @@ export class CustomersRepository implements OnModuleInit, OnModuleDestroy {
         email VARCHAR(254),
         district VARCHAR(80) NOT NULL,
         address VARCHAR(300) NOT NULL,
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION,
         notes VARCHAR(500),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+    `);
+    await this.pool.query(`
+      ALTER TABLE customers
+        ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION
     `);
     await this.pool.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS customers_manager_name_idx
@@ -70,8 +81,8 @@ export class CustomersRepository implements OnModuleInit, OnModuleDestroy {
     const result = await this.pool.query<CustomerRow>(
       `INSERT INTO customers (
          id, manager_id, name, contact_name, phone, email, district, address,
-         notes, created_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         latitude, longitude, notes, created_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         customer.id,
@@ -82,6 +93,8 @@ export class CustomersRepository implements OnModuleInit, OnModuleDestroy {
         customer.email,
         customer.district,
         customer.address,
+        customer.latitude,
+        customer.longitude,
         customer.notes,
         customer.createdAt,
       ],
@@ -99,6 +112,36 @@ export class CustomersRepository implements OnModuleInit, OnModuleDestroy {
     return result.rows.map((row) => this.toRecord(row));
   }
 
+  async update(
+    customerId: string,
+    managerId: string,
+    customer: Omit<CustomerRecord, 'id' | 'managerId' | 'createdAt'>,
+  ): Promise<CustomerRecord | null> {
+    const result = await this.pool.query<CustomerRow>(
+      `UPDATE customers
+       SET name = $3, contact_name = $4, phone = $5, email = $6,
+           district = $7, address = $8, latitude = $9, longitude = $10,
+           notes = $11
+       WHERE id = $1 AND manager_id = $2
+       RETURNING *`,
+      [
+        customerId,
+        managerId,
+        customer.name,
+        customer.contactName,
+        customer.phone,
+        customer.email,
+        customer.district,
+        customer.address,
+        customer.latitude,
+        customer.longitude,
+        customer.notes,
+      ],
+    );
+    const row = result.rows[0];
+    return row ? this.toRecord(row) : null;
+  }
+
   async onModuleDestroy() {
     await this.pool.end();
   }
@@ -113,11 +156,17 @@ export class CustomersRepository implements OnModuleInit, OnModuleDestroy {
       email: row.email,
       district: row.district,
       address: row.address,
+      latitude: this.toNumber(row.latitude),
+      longitude: this.toNumber(row.longitude),
       notes: row.notes,
       createdAt:
         row.created_at instanceof Date
           ? row.created_at.toISOString()
           : row.created_at,
     };
+  }
+
+  private toNumber(value: string | number | null) {
+    return value === null ? null : Number(value);
   }
 }
