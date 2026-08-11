@@ -6,6 +6,11 @@
     "scripts": {
         "build": "turbo build",
         "dev": "turbo dev",
+        "dev:api": "pnpm --filter api dev",
+        "dev:mobile": "pnpm --filter field-mobile dev",
+        "dev:web": "pnpm --filter admin-web dev",
+        "infra:down": "docker compose down",
+        "infra:up": "docker compose up -d",
         "lint": "turbo lint",
         "test": "turbo test",
         "typecheck": "turbo typecheck"
