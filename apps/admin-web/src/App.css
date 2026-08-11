@@ -1,14 +1,3 @@
-:root {
-  --ink: #20251f;
-  --muted: #747b72;
-  --line: #dde0d9;
-  --surface: #fff;
-  --forest: #285b43;
-  --deep-forest: #123b2a;
-  --lime: #d9f278;
-  --paper: #f5f6ef;
-}
-
 .public-page {
   min-height: 100vh;
   background: var(--paper);

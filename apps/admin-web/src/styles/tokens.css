@@ -1,0 +1,23 @@
+:root {
+  --ink: #20251f;
+  --muted: #747b72;
+  --line: #dde0d9;
+  --surface: #fff;
+  --forest: #285b43;
+  --deep-forest: #123b2a;
+  --lime: #d9f278;
+  --paper: #f5f6ef;
+  --focus-ring: #8eaa9a;
+  --danger: #a7473c;
+  --success: #26734e;
+}
+
+::selection {
+  background: #d9f278;
+  color: #173d2d;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--focus-ring) 55%, transparent);
+  outline-offset: 2px;
+}
