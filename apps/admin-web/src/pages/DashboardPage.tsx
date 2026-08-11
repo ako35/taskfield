@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { ProfileMenu } from "../components/ProfileMenu";
+import { CustomersManagement } from "../features/customers/CustomersManagement";
 import { Overview } from "../features/dashboard/Overview";
 import { TeamManagement } from "../features/team/TeamManagement";
 import { VisitsManagement } from "../features/visits/VisitsManagement";
@@ -67,7 +68,14 @@ export function DashboardPage({ goTo }: { goTo: (view: View) => void }) {
           >
             <MapPinned size={19} /> Ziyaretler
           </a>
-          <a href="#customers">
+          <a
+            className={section === "customers" ? "active" : ""}
+            href="#customers"
+            onClick={(event) => {
+              event.preventDefault();
+              setSection("customers");
+            }}
+          >
             <Store size={19} /> Müşteriler
           </a>
           <a href="#orders">
@@ -125,6 +133,8 @@ export function DashboardPage({ goTo }: { goTo: (view: View) => void }) {
 
         {section === "team" ? (
           <TeamManagement onUnauthorized={logout} />
+        ) : section === "customers" ? (
+          <CustomersManagement onUnauthorized={logout} />
         ) : section === "visits" ? (
           <VisitsManagement onUnauthorized={logout} />
         ) : (

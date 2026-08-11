@@ -1,7 +1,19 @@
 import type { VisitStatus } from "@taskfield/domain";
 
 export type AppView = "home" | "login" | "register" | "dashboard";
-export type DashboardSection = "overview" | "visits" | "team";
+export type DashboardSection = "overview" | "visits" | "customers" | "team";
+
+export interface Customer {
+  id: string;
+  name: string;
+  contactName: string;
+  phone: string;
+  email: string | null;
+  district: string;
+  address: string;
+  notes: string | null;
+  createdAt: string;
+}
 
 export interface FieldAgent {
   id: string;

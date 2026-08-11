@@ -4,9 +4,7 @@ import { VisitsRepository } from './visits.repository';
 
 export interface CreateVisitInput {
   fieldAgentId?: unknown;
-  customerName?: unknown;
-  district?: unknown;
-  address?: unknown;
+  customerId?: unknown;
   scheduledAt?: unknown;
   notes?: unknown;
 }
@@ -16,10 +14,8 @@ export class VisitsService {
   constructor(private readonly visitsRepository: VisitsRepository) {}
 
   async create(managerId: string, input: CreateVisitInput) {
-    const fieldAgentId = this.uuid(input.fieldAgentId);
-    const customerName = this.text(input.customerName, 'Müşteri adı', 2, 120);
-    const district = this.text(input.district, 'İlçe', 2, 80);
-    const address = this.text(input.address, 'Açık adres', 5, 300);
+    const fieldAgentId = this.uuid(input.fieldAgentId, 'saha çalışanı');
+    const customerId = this.uuid(input.customerId, 'müşteri');
     const scheduledAt = this.date(input.scheduledAt);
     const notes = this.optionalText(input.notes, 'Not', 500);
     const createdAt = new Date().toISOString();
@@ -28,9 +24,7 @@ export class VisitsService {
       id: randomUUID(),
       managerId,
       fieldAgentId,
-      customerName,
-      district,
-      address,
+      customerId,
       scheduledAt,
       notes,
       status: 'planned',
@@ -38,7 +32,7 @@ export class VisitsService {
     });
     if (!visit) {
       throw new BadRequestException(
-        'Seçilen saha çalışanı ekibinizde bulunamadı.',
+        'Seçilen saha çalışanı veya müşteri bölgenizde bulunamadı.',
       );
     }
     return { visit };
@@ -54,14 +48,14 @@ export class VisitsService {
     };
   }
 
-  private uuid(value: unknown) {
+  private uuid(value: unknown, label: string) {
     if (
       typeof value !== 'string' ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
         value,
       )
     ) {
-      throw new BadRequestException('Geçerli bir saha çalışanı seçin.');
+      throw new BadRequestException(`Geçerli bir ${label} seçin.`);
     }
     return value;
   }

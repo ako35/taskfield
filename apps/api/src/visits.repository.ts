@@ -7,6 +7,7 @@ export interface VisitRecord {
   id: string;
   managerId: string;
   fieldAgentId: string;
+  customerId: string | null;
   agentFirstName: string;
   agentLastName: string;
   customerName: string;
@@ -22,6 +23,7 @@ interface VisitRow {
   id: string;
   manager_id: string;
   field_agent_id: string;
+  customer_id: string | null;
   agent_first_name: string;
   agent_last_name: string;
   customer_name: string;
@@ -57,6 +59,7 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
         id UUID PRIMARY KEY,
         manager_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         field_agent_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        customer_id UUID,
         customer_name VARCHAR(120) NOT NULL,
         district VARCHAR(80) NOT NULL,
         address VARCHAR(300) NOT NULL,
@@ -68,6 +71,10 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
       )
     `);
     await this.pool.query(
+      `ALTER TABLE visit_assignments
+       ADD COLUMN IF NOT EXISTS customer_id UUID`,
+    );
+    await this.pool.query(
       `CREATE INDEX IF NOT EXISTS visit_assignments_agent_schedule_idx
        ON visit_assignments (field_agent_id, scheduled_at)`,
     );
@@ -75,22 +82,37 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
       `CREATE INDEX IF NOT EXISTS visit_assignments_manager_schedule_idx
        ON visit_assignments (manager_id, scheduled_at)`,
     );
+    await this.pool.query(
+      `CREATE INDEX IF NOT EXISTS visit_assignments_customer_idx
+       ON visit_assignments (customer_id)`,
+    );
   }
 
   async create(
-    visit: Omit<VisitRecord, 'agentFirstName' | 'agentLastName'>,
+    visit: Omit<
+      VisitRecord,
+      | 'agentFirstName'
+      | 'agentLastName'
+      | 'customerName'
+      | 'district'
+      | 'address'
+    > & { customerId: string },
   ): Promise<VisitRecord | null> {
     const result = await this.pool.query<VisitRow>(
       `WITH inserted AS (
          INSERT INTO visit_assignments (
-           id, manager_id, field_agent_id, customer_name, district, address,
-           scheduled_at, notes, status, created_at
+           id, manager_id, field_agent_id, customer_id, customer_name,
+           district, address, scheduled_at, notes, status, created_at
          )
-         SELECT $1, $2, user_account.id, $4, $5, $6, $7, $8, $9, $10
+         SELECT $1, $2, user_account.id, customer.id, customer.name,
+                customer.district, customer.address, $5, $6, $7, $8
          FROM users user_account
+         CROSS JOIN customers customer
          WHERE user_account.id = $3
            AND user_account.manager_id = $2
            AND user_account.role = 'field_agent'
+           AND customer.id = $4
+           AND customer.manager_id = $2
          RETURNING *
        )
        SELECT inserted.*, user_account.first_name AS agent_first_name,
@@ -101,9 +123,7 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
         visit.id,
         visit.managerId,
         visit.fieldAgentId,
-        visit.customerName,
-        visit.district,
-        visit.address,
+        visit.customerId,
         visit.scheduledAt,
         visit.notes,
         visit.status,
@@ -144,6 +164,7 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
       id: row.id,
       managerId: row.manager_id,
       fieldAgentId: row.field_agent_id,
+      customerId: row.customer_id,
       agentFirstName: row.agent_first_name,
       agentLastName: row.agent_last_name,
       customerName: row.customer_name,

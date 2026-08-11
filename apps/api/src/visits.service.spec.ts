@@ -5,6 +5,7 @@ import { VisitsService } from './visits.service';
 describe('VisitsService', () => {
   const managerId = '30b985f8-5d08-4d5e-aa2f-0a1337f8ea21';
   const agentId = 'b26d0f3c-f223-42a5-9898-fb678dbdde88';
+  const customerId = 'e4f2aa78-44e8-487f-93b2-935eb032ec7d';
   let visits: VisitRecord[];
   let service: VisitsService;
 
@@ -12,15 +13,29 @@ describe('VisitsService', () => {
     visits = [];
     const repository = {
       create: (
-        visit: Omit<VisitRecord, 'agentFirstName' | 'agentLastName'>,
+        visit: Omit<
+          VisitRecord,
+          | 'agentFirstName'
+          | 'agentLastName'
+          | 'customerName'
+          | 'district'
+          | 'address'
+        > & { customerId: string },
       ) => {
-        if (visit.managerId !== managerId || visit.fieldAgentId !== agentId) {
+        if (
+          visit.managerId !== managerId ||
+          visit.fieldAgentId !== agentId ||
+          visit.customerId !== customerId
+        ) {
           return Promise.resolve(null);
         }
         const created = {
           ...visit,
           agentFirstName: 'Ece',
           agentLastName: 'Yılmaz',
+          customerName: 'Pati Dünyası',
+          district: 'Kadıköy',
+          address: 'Bağdat Caddesi No: 120 Kadıköy, İstanbul',
         };
         visits.push(created);
         return Promise.resolve(created);
@@ -35,9 +50,7 @@ describe('VisitsService', () => {
 
   const assignment = {
     fieldAgentId: agentId,
-    customerName: 'Pati Dünyası',
-    district: 'Kadıköy',
-    address: 'Bağdat Caddesi No: 120 Kadıköy, İstanbul',
+    customerId,
     scheduledAt: '2026-08-12T09:30:00.000Z',
     notes: 'Yeni ürün kataloğunu göster.',
   };
@@ -48,7 +61,8 @@ describe('VisitsService', () => {
     expect(result.visit).toMatchObject({
       managerId,
       fieldAgentId: agentId,
-      customerName: assignment.customerName,
+      customerId,
+      customerName: 'Pati Dünyası',
       status: 'planned',
     });
     await expect(service.listForFieldAgent(agentId)).resolves.toMatchObject({
@@ -62,9 +76,9 @@ describe('VisitsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('validates customer, location and schedule fields', async () => {
+  it('validates customer and schedule fields', async () => {
     await expect(
-      service.create(managerId, { ...assignment, address: '' }),
+      service.create(managerId, { ...assignment, customerId: '' }),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       service.create(managerId, { ...assignment, scheduledAt: 'not-a-date' }),
