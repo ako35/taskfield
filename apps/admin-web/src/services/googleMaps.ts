@@ -29,14 +29,29 @@ export async function loadGoogleMaps() {
   return { mapsLibrary, markerLibrary };
 }
 
+export async function loadGooglePlaces() {
+  configureGoogleMaps();
+  return importLibrary("places");
+}
+
 export async function geocodeAddress(address: string) {
   configureGoogleMaps();
   const { Geocoder } = await importLibrary("geocoding");
-  const response = await new Geocoder().geocode({
-    address,
-    componentRestrictions: { country: "TR" },
-    region: "TR",
-  });
+  let response: google.maps.GeocoderResponse;
+  try {
+    response = await new Geocoder().geocode({
+      address,
+      componentRestrictions: { country: "TR" },
+      region: "TR",
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("REQUEST_DENIED")) {
+      throw new Error(
+        "Adres arama için Google Cloud projesinde Geocoding API'yi etkinleştirin.",
+      );
+    }
+    throw error;
+  }
   const location = response.results[0]?.geometry.location;
   if (!location) return null;
   return {

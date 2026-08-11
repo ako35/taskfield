@@ -1404,6 +1404,14 @@ td > span:not(.status) {
 .customer-form-actions .button {
   flex: 1;
 }
+.address-autocomplete-field > span {
+  display: block;
+}
+.address-autocomplete-field gmp-place-autocomplete {
+  width: 100%;
+  color-scheme: light;
+  font-family: inherit;
+}
 .location-map {
   position: relative;
   width: 100%;

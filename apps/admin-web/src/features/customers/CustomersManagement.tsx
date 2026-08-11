@@ -10,6 +10,7 @@ import {
   Store,
   X,
 } from "lucide-react";
+import { AddressAutocomplete } from "../../components/AddressAutocomplete";
 import { FormMessage } from "../../components/FormMessage";
 import { LocationMap, type MapPosition } from "../../components/LocationMap";
 import { PageHeader } from "../../components/PageHeader";
@@ -90,14 +91,15 @@ export function CustomersManagement({
   async function saveCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    if (!form.checkValidity() || !token || !position) {
+    const data = new FormData(form);
+    const address = String(data.get("address") ?? "").trim();
+    if (!form.checkValidity() || !token || !position || address.length < 5) {
       setError("Zorunlu müşteri bilgilerini eksiksiz doldurun.");
       if (!position) {
         setLocationError("Müşterinin konumunu haritada işaretleyin.");
       }
       return;
     }
-    const data = new FormData(form);
     setSubmitting(true);
     setError("");
     setSuccess("");
@@ -414,17 +416,19 @@ export function CustomersManagement({
                 />
               </label>
             </div>
-            <label>
-              Açık adres
-              <textarea
-                name="address"
-                required
-                minLength={5}
-                maxLength={300}
-                placeholder="Mahalle, cadde, bina numarası"
-                defaultValue={editingCustomer?.address ?? ""}
-              />
-            </label>
+            <AddressAutocomplete
+              initialAddress={editingCustomer?.address ?? ""}
+              onSelect={({ district, position: nextPosition }) => {
+                const districtInput =
+                  formRef.current?.elements.namedItem("district");
+                if (district && districtInput instanceof HTMLInputElement) {
+                  districtInput.value = district;
+                }
+                setPosition(nextPosition);
+                setLocationError("");
+              }}
+              onError={setLocationError}
+            />
             <div className="map-picker-heading">
               <div>
                 <strong>Harita konumu</strong>
