@@ -3,13 +3,15 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Param,
+  Patch,
   Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './jwt-auth.guard';
-import type { CreateVisitInput } from './visits.service';
+import type { CreateVisitInput, VisitLocationInput } from './visits.service';
 import { VisitsService } from './visits.service';
 
 @Controller('visits')
@@ -35,5 +37,33 @@ export class VisitsController {
       );
     }
     return this.visitsService.create(request.user.id, input);
+  }
+
+  @Patch(':visitId/check-in')
+  checkIn(
+    @Req() request: AuthenticatedRequest,
+    @Param('visitId') visitId: string,
+    @Body() input: VisitLocationInput,
+  ) {
+    if (request.user.role !== 'field_agent') {
+      throw new ForbiddenException(
+        'Yalnız saha çalışanı ziyaret girişini işaretleyebilir.',
+      );
+    }
+    return this.visitsService.checkIn(request.user.id, visitId, input);
+  }
+
+  @Patch(':visitId/check-out')
+  checkOut(
+    @Req() request: AuthenticatedRequest,
+    @Param('visitId') visitId: string,
+    @Body() input: VisitLocationInput,
+  ) {
+    if (request.user.role !== 'field_agent') {
+      throw new ForbiddenException(
+        'Yalnız saha çalışanı ziyaret çıkışını işaretleyebilir.',
+      );
+    }
+    return this.visitsService.checkOut(request.user.id, visitId, input);
   }
 }

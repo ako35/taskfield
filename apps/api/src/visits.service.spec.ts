@@ -46,7 +46,38 @@ describe('VisitsService', () => {
         Promise.resolve(visits.filter((visit) => visit.managerId === id)),
       findByFieldAgent: (id: string) =>
         Promise.resolve(visits.filter((visit) => visit.fieldAgentId === id)),
-    } as VisitsRepository;
+      findByIdForFieldAgent: (fieldAgentId: string, visitId: string) =>
+        Promise.resolve(
+          visits.find(
+            (visit) =>
+              visit.fieldAgentId === fieldAgentId && visit.id === visitId,
+          ) ?? null,
+        ),
+      checkIn: async (fieldAgentId: string, visitId: string, input) => {
+        const visit = visits.find(
+          (candidate) =>
+            candidate.fieldAgentId === fieldAgentId && candidate.id === visitId,
+        );
+        if (!visit) return null;
+        visit.status = 'in_progress';
+        visit.checkInAt = input.checkInAt;
+        visit.checkInLatitude = input.latitude;
+        visit.checkInLongitude = input.longitude;
+        return visit;
+      },
+      checkOut: async (fieldAgentId: string, visitId: string, input) => {
+        const visit = visits.find(
+          (candidate) =>
+            candidate.fieldAgentId === fieldAgentId && candidate.id === visitId,
+        );
+        if (!visit) return null;
+        visit.status = 'completed';
+        visit.checkOutAt = input.checkOutAt;
+        visit.checkOutLatitude = input.latitude;
+        visit.checkOutLongitude = input.longitude;
+        return visit;
+      },
+    } as unknown as VisitsRepository;
     service = new VisitsService(repository);
   });
 
@@ -85,5 +116,35 @@ describe('VisitsService', () => {
     await expect(
       service.create(managerId, { ...assignment, scheduledAt: 'not-a-date' }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('lets a field agent check in and out with location tracking', async () => {
+    const created = await service.create(managerId, assignment);
+
+    await expect(
+      service.checkIn(agentId, created.visit.id, {
+        latitude: 40.9876,
+        longitude: 29.0254,
+      }),
+    ).resolves.toMatchObject({
+      visit: {
+        status: 'in_progress',
+        checkInLatitude: 40.9876,
+        checkInLongitude: 29.0254,
+      },
+    });
+
+    await expect(
+      service.checkOut(agentId, created.visit.id, {
+        latitude: 40.988,
+        longitude: 29.026,
+      }),
+    ).resolves.toMatchObject({
+      visit: {
+        status: 'completed',
+        checkOutLatitude: 40.988,
+        checkOutLongitude: 29.026,
+      },
+    });
   });
 });

@@ -1,8 +1,9 @@
 import type { VisitStatus } from "@taskfield/domain";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -10,7 +11,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { ApiError, getAssignedVisits } from "../services/mobileApi";
+import {
+  ApiError,
+  checkInVisit,
+  checkOutVisit,
+  getAssignedVisits,
+} from "../services/mobileApi";
 import type { MobileUser, VisitAssignment } from "../types";
 
 const statusLabels: Record<VisitStatus, string> = {
@@ -26,6 +32,21 @@ interface FieldDashboardProps {
   onSessionExpired: () => void;
 }
 
+async function getCurrentLocationOnce(): Promise<GeolocationPosition> {
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Konum erişimi desteklenmiyor."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
+  });
+}
+
 function RouteState({ loading, error }: { loading: boolean; error: string }) {
   if (loading) {
     return <ActivityIndicator color="#285b43" style={styles.routeLoading} />;
@@ -37,11 +58,26 @@ function RouteState({ loading, error }: { loading: boolean; error: string }) {
 function VisitCard({
   visit,
   isLast,
+  onCheckIn,
+  onCheckOut,
 }: {
   visit: VisitAssignment;
   isLast: boolean;
+  onCheckIn: (visitId: string) => void;
+  onCheckOut: (visitId: string) => void;
 }) {
   const scheduledAt = new Date(visit.scheduledAt);
+  const durationText = useMemo(() => {
+    if (!visit.checkInAt) return "Giriş yapılmadı";
+    const end = visit.checkOutAt ? new Date(visit.checkOutAt) : new Date();
+    const start = new Date(visit.checkInAt);
+    const diffMs = Math.max(end.getTime() - start.getTime(), 0);
+    const totalMinutes = Math.round(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours > 0 ? `${hours}s ${minutes}dk` : `${minutes}dk`;
+  }, [visit.checkInAt, visit.checkOutAt]);
+
   return (
     <View style={styles.visit}>
       <View style={styles.timeColumn}>
@@ -83,6 +119,26 @@ function VisitCard({
         <Text style={styles.visitAddress}>{visit.address}</Text>
         {visit.notes ? (
           <Text style={styles.visitNote}>{visit.notes}</Text>
+        ) : null}
+        <View style={styles.visitMetaRow}>
+          <Text style={styles.durationLabel}>Ziyaret süresi</Text>
+          <Text style={styles.durationValue}>{durationText}</Text>
+        </View>
+        {visit.status === "planned" ? (
+          <Pressable
+            style={styles.actionButton}
+            onPress={() => onCheckIn(visit.id)}
+          >
+            <Text style={styles.actionButtonText}>Dükkan giriş</Text>
+          </Pressable>
+        ) : null}
+        {visit.status === "in_progress" ? (
+          <Pressable
+            style={[styles.actionButton, styles.exitButton]}
+            onPress={() => onCheckOut(visit.id)}
+          >
+            <Text style={styles.actionButtonText}>Dükkan çıkış</Text>
+          </Pressable>
         ) : null}
       </View>
     </View>
@@ -127,6 +183,58 @@ export function FieldDashboard({
     }
     void loadVisits();
   }, [user.id]);
+
+  async function handleCheckIn(visitId: string) {
+    try {
+      const position = await getCurrentLocationOnce();
+      const updatedVisit = await checkInVisit(
+        visitId,
+        position.coords.latitude,
+        position.coords.longitude,
+      );
+      if (!updatedVisit) {
+        Alert.alert("Giriş kaydı oluşturulamadı.");
+        return;
+      }
+      setVisits((current) =>
+        current.map((visit) => (visit.id === visitId ? updatedVisit : visit)),
+      );
+      Alert.alert("Dükkan giriş kaydı", "Ziyarete giriş yapıldı.");
+    } catch (locationError) {
+      Alert.alert(
+        "Konum izni gerekli",
+        locationError instanceof Error
+          ? locationError.message
+          : "Dükkan girişini kaydetmek için konum izni verin.",
+      );
+    }
+  }
+
+  async function handleCheckOut(visitId: string) {
+    try {
+      const position = await getCurrentLocationOnce();
+      const updatedVisit = await checkOutVisit(
+        visitId,
+        position.coords.latitude,
+        position.coords.longitude,
+      );
+      if (!updatedVisit) {
+        Alert.alert("Çıkış kaydı oluşturulamadı.");
+        return;
+      }
+      setVisits((current) =>
+        current.map((visit) => (visit.id === visitId ? updatedVisit : visit)),
+      );
+      Alert.alert("Dükkan çıkış kaydı", "Ziyaret tamamlandı.");
+    } catch (locationError) {
+      Alert.alert(
+        "Konum izni gerekli",
+        locationError instanceof Error
+          ? locationError.message
+          : "Dükkan çıkışını kaydetmek için konum izni verin.",
+      );
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -201,6 +309,8 @@ export function FieldDashboard({
             key={visit.id}
             visit={visit}
             isLast={index === visits.length - 1}
+            onCheckIn={handleCheckIn}
+            onCheckOut={handleCheckOut}
           />
         ))}
       </ScrollView>
@@ -356,6 +466,27 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 14,
   },
+  visitMetaRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#eceee9",
+    paddingTop: 8,
+  },
+  durationLabel: { color: "#69736c", fontSize: 9, fontWeight: "700" },
+  durationValue: { color: "#173d2d", fontSize: 9, fontWeight: "700" },
+  actionButton: {
+    marginTop: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    borderRadius: 6,
+    backgroundColor: "#285b43",
+  },
+  actionButtonText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  exitButton: { backgroundColor: "#b25642" },
   badge: {
     alignSelf: "flex-start",
     paddingHorizontal: 7,

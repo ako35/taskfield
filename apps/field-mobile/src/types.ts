@@ -16,6 +16,12 @@ export interface VisitAssignment {
   scheduledAt: string;
   notes: string | null;
   status: VisitStatus;
+  checkInAt: string | null;
+  checkInLatitude: number | null;
+  checkInLongitude: number | null;
+  checkOutAt: string | null;
+  checkOutLatitude: number | null;
+  checkOutLongitude: number | null;
 }
 
 export type MobileScreen = "dashboard" | "profile";

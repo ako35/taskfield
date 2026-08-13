@@ -19,6 +19,12 @@ export interface VisitRecord {
   notes: string | null;
   status: VisitStatus;
   createdAt: string;
+  checkInAt: string | null;
+  checkInLatitude: number | null;
+  checkInLongitude: number | null;
+  checkOutAt: string | null;
+  checkOutLatitude: number | null;
+  checkOutLongitude: number | null;
 }
 
 interface VisitRow {
@@ -37,6 +43,12 @@ interface VisitRow {
   notes: string | null;
   status: VisitStatus;
   created_at: Date | string;
+  check_in_at: Date | string | null;
+  check_in_latitude: string | number | null;
+  check_in_longitude: string | number | null;
+  check_out_at: Date | string | null;
+  check_out_latitude: string | number | null;
+  check_out_longitude: string | number | null;
 }
 
 @Injectable()
@@ -80,7 +92,13 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
       `ALTER TABLE visit_assignments
        ADD COLUMN IF NOT EXISTS customer_id UUID,
        ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
-       ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION`,
+       ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION,
+       ADD COLUMN IF NOT EXISTS check_in_at TIMESTAMPTZ,
+       ADD COLUMN IF NOT EXISTS check_in_latitude DOUBLE PRECISION,
+       ADD COLUMN IF NOT EXISTS check_in_longitude DOUBLE PRECISION,
+       ADD COLUMN IF NOT EXISTS check_out_at TIMESTAMPTZ,
+       ADD COLUMN IF NOT EXISTS check_out_latitude DOUBLE PRECISION,
+       ADD COLUMN IF NOT EXISTS check_out_longitude DOUBLE PRECISION`,
     );
     await this.pool.query(
       `CREATE INDEX IF NOT EXISTS visit_assignments_agent_schedule_idx
@@ -154,6 +172,81 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
     return this.findWithAgent('visit.field_agent_id = $1', fieldAgentId);
   }
 
+  async findByIdForFieldAgent(
+    fieldAgentId: string,
+    visitId: string,
+  ): Promise<VisitRecord | null> {
+    const result = await this.pool.query<VisitRow>(
+      `SELECT visit.*, user_account.first_name AS agent_first_name,
+              user_account.last_name AS agent_last_name
+       FROM visit_assignments visit
+       JOIN users user_account ON user_account.id = visit.field_agent_id
+       WHERE visit.id = $1 AND visit.field_agent_id = $2
+       LIMIT 1`,
+      [visitId, fieldAgentId],
+    );
+    const row = result.rows[0];
+    return row ? this.toRecord(row) : null;
+  }
+
+  async checkIn(
+    fieldAgentId: string,
+    visitId: string,
+    input: {
+      latitude: number;
+      longitude: number;
+      checkInAt: string;
+    },
+  ): Promise<VisitRecord | null> {
+    const result = await this.pool.query<VisitRow>(
+      `WITH updated AS (
+         UPDATE visit_assignments
+         SET status = 'in_progress',
+             check_in_at = $3,
+             check_in_latitude = $4,
+             check_in_longitude = $5
+         WHERE id = $1 AND field_agent_id = $2
+         RETURNING *
+       )
+       SELECT updated.*, user_account.first_name AS agent_first_name,
+              user_account.last_name AS agent_last_name
+       FROM updated
+       JOIN users user_account ON user_account.id = updated.field_agent_id`,
+      [visitId, fieldAgentId, input.checkInAt, input.latitude, input.longitude],
+    );
+    const row = result.rows[0];
+    return row ? this.toRecord(row) : null;
+  }
+
+  async checkOut(
+    fieldAgentId: string,
+    visitId: string,
+    input: {
+      latitude: number;
+      longitude: number;
+      checkOutAt: string;
+    },
+  ): Promise<VisitRecord | null> {
+    const result = await this.pool.query<VisitRow>(
+      `WITH updated AS (
+         UPDATE visit_assignments
+         SET status = 'completed',
+             check_out_at = $3,
+             check_out_latitude = $4,
+             check_out_longitude = $5
+         WHERE id = $1 AND field_agent_id = $2
+         RETURNING *
+       )
+       SELECT updated.*, user_account.first_name AS agent_first_name,
+              user_account.last_name AS agent_last_name
+       FROM updated
+       JOIN users user_account ON user_account.id = updated.field_agent_id`,
+      [visitId, fieldAgentId, input.checkOutAt, input.latitude, input.longitude],
+    );
+    const row = result.rows[0];
+    return row ? this.toRecord(row) : null;
+  }
+
   async onModuleDestroy() {
     await this.pool.end();
   }
@@ -188,10 +281,17 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
       notes: row.notes,
       status: row.status,
       createdAt: this.toIsoString(row.created_at),
+      checkInAt: this.toIsoString(row.check_in_at),
+      checkInLatitude: this.toNumber(row.check_in_latitude),
+      checkInLongitude: this.toNumber(row.check_in_longitude),
+      checkOutAt: this.toIsoString(row.check_out_at),
+      checkOutLatitude: this.toNumber(row.check_out_latitude),
+      checkOutLongitude: this.toNumber(row.check_out_longitude),
     };
   }
 
-  private toIsoString(value: Date | string) {
+  private toIsoString(value: Date | string | null) {
+    if (value === null) return null;
     return value instanceof Date ? value.toISOString() : value;
   }
 

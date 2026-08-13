@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { VisitsRepository } from './visits.repository';
 
@@ -7,6 +11,11 @@ export interface CreateVisitInput {
   customerId?: unknown;
   scheduledAt?: unknown;
   notes?: unknown;
+}
+
+export interface VisitLocationInput {
+  latitude?: unknown;
+  longitude?: unknown;
 }
 
 @Injectable()
@@ -48,6 +57,68 @@ export class VisitsService {
     };
   }
 
+  async checkIn(
+    fieldAgentId: string,
+    visitId: string,
+    input: VisitLocationInput,
+  ) {
+    const visit = await this.visitsRepository.findByIdForFieldAgent(
+      fieldAgentId,
+      visitId,
+    );
+    if (!visit) {
+      throw new NotFoundException('Atanan ziyaret bulunamadı.');
+    }
+    if (visit.status === 'completed' || visit.status === 'cancelled') {
+      throw new BadRequestException('Tamamlanan veya iptal edilen ziyaretin girişini yapamazsınız.');
+    }
+
+    const latitude = this.coordinate(input.latitude, 'Enlem');
+    const longitude = this.coordinate(input.longitude, 'Boylam');
+    this.ensureWithinCustomerRange(visit, latitude, longitude);
+
+    const updated = await this.visitsRepository.checkIn(fieldAgentId, visitId, {
+      latitude,
+      longitude,
+      checkInAt: new Date().toISOString(),
+    });
+    if (!updated) {
+      throw new NotFoundException('Giriş kaydı oluşturulamadı.');
+    }
+    return { visit: updated };
+  }
+
+  async checkOut(
+    fieldAgentId: string,
+    visitId: string,
+    input: VisitLocationInput,
+  ) {
+    const visit = await this.visitsRepository.findByIdForFieldAgent(
+      fieldAgentId,
+      visitId,
+    );
+    if (!visit) {
+      throw new NotFoundException('Atanan ziyaret bulunamadı.');
+    }
+    if (visit.status !== 'in_progress') {
+      throw new BadRequestException('Önce ziyaret girişini tamamlamalısınız.');
+    }
+
+    const latitude = this.coordinate(input.latitude, 'Enlem');
+    const longitude = this.coordinate(input.longitude, 'Boylam');
+    this.ensureWithinCustomerRange(visit, latitude, longitude);
+
+    const updated = await this.visitsRepository.checkOut(fieldAgentId, visitId, {
+      latitude,
+      longitude,
+      checkOutAt: new Date().toISOString(),
+    });
+    if (!updated) {
+      throw new NotFoundException('Çıkış kaydı oluşturulamadı.');
+    }
+    return { visit: updated };
+  }
+
   private uuid(value: unknown, label: string) {
     if (
       typeof value !== 'string' ||
@@ -87,5 +158,53 @@ export class VisitsService {
       throw new BadRequestException('Geçerli bir ziyaret tarihi seçin.');
     }
     return date.toISOString();
+  }
+
+  private coordinate(value: unknown, label: string) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < -90 || numeric > 90) {
+      throw new BadRequestException(`${label} geçerli bir koordinat olmalıdır.`);
+    }
+    return numeric;
+  }
+
+  private ensureWithinCustomerRange(
+    visit: { latitude: number | null; longitude: number | null },
+    latitude: number,
+    longitude: number,
+  ) {
+    if (visit.latitude === null || visit.longitude === null) return;
+
+    const distanceKm = this.distanceKm(
+      latitude,
+      longitude,
+      visit.latitude,
+      visit.longitude,
+    );
+    if (distanceKm > 0.5) {
+      throw new BadRequestException(
+        'Müşteri lokasyonuna en az 500 metre yakın olmalısınız.',
+      );
+    }
+  }
+
+  private distanceKm(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ) {
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
   }
 }
