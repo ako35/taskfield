@@ -38,6 +38,12 @@ export class VisitsService {
       notes,
       status: 'planned',
       createdAt,
+      checkInAt: null,
+      checkInLatitude: null,
+      checkInLongitude: null,
+      checkOutAt: null,
+      checkOutLatitude: null,
+      checkOutLongitude: null,
     });
     if (!visit) {
       throw new BadRequestException(

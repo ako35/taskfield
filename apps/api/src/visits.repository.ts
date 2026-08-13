@@ -290,8 +290,10 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  private toIsoString(value: Date | string | null) {
-    if (value === null) return null;
+  private toIsoString(value: Date | string | null): string {
+    if (value === null) {
+      return new Date(0).toISOString();
+    }
     return value instanceof Date ? value.toISOString() : value;
   }
 

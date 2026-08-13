@@ -39,6 +39,13 @@ export interface VisitAssignment {
   scheduledAt: string;
   notes: string | null;
   status: VisitStatus;
+  createdAt: string;
+  checkInAt: string | null;
+  checkInLatitude: number | null;
+  checkInLongitude: number | null;
+  checkOutAt: string | null;
+  checkOutLatitude: number | null;
+  checkOutLongitude: number | null;
 }
 
 export interface ManagerProfile {

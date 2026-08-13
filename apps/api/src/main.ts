@@ -34,8 +34,13 @@ async function bootstrap() {
 
       const localhostPattern = /^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/;
       const androidEmulatorPattern = /^http:\/\/10\.0\.2\.2(?::\d+)?$/;
+      const localNetworkPattern = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(?::\d+)?$/;
 
-      if (localhostPattern.test(origin) || androidEmulatorPattern.test(origin)) {
+      if (
+        localhostPattern.test(origin) ||
+        androidEmulatorPattern.test(origin) ||
+        localNetworkPattern.test(origin)
+      ) {
         callback(null, true);
         return;
       }

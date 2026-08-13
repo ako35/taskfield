@@ -53,7 +53,11 @@ describe('VisitsService', () => {
               visit.fieldAgentId === fieldAgentId && visit.id === visitId,
           ) ?? null,
         ),
-      checkIn: async (fieldAgentId: string, visitId: string, input) => {
+      checkIn: async (
+        fieldAgentId: string,
+        visitId: string,
+        input: { latitude: number; longitude: number; checkInAt: string },
+      ) => {
         const visit = visits.find(
           (candidate) =>
             candidate.fieldAgentId === fieldAgentId && candidate.id === visitId,
@@ -65,7 +69,11 @@ describe('VisitsService', () => {
         visit.checkInLongitude = input.longitude;
         return visit;
       },
-      checkOut: async (fieldAgentId: string, visitId: string, input) => {
+      checkOut: async (
+        fieldAgentId: string,
+        visitId: string,
+        input: { latitude: number; longitude: number; checkOutAt: string },
+      ) => {
         const visit = visits.find(
           (candidate) =>
             candidate.fieldAgentId === fieldAgentId && candidate.id === visitId,

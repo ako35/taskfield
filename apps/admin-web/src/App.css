@@ -1518,9 +1518,24 @@ td > span:not(.status) {
   align-items: center;
   gap: 18px;
   border-top: 1px solid #eceee9;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.assignment-list article:hover {
+  background: #f6f8f5;
+}
+.assignment-list article:focus-visible {
+  outline: 2px solid #a6c9ac;
+  outline-offset: -2px;
 }
 .assignment-list article:first-child {
   border-top: 0;
+}
+.assignment-selected {
+  background: #f4f8f4;
+  box-shadow: inset 0 0 0 1px #d7e4d7;
 }
 .assignment-date {
   padding-right: 14px;
@@ -1574,6 +1589,30 @@ td > span:not(.status) {
   line-height: 1.45;
   white-space: normal;
 }
+.assignment-detail-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 7px;
+  border: 1px solid #dde5db;
+  border-radius: 8px;
+  background: #f7faf7;
+}
+.assignment-detail-box > div {
+  display: grid;
+  gap: 3px;
+}
+.assignment-detail-box strong {
+  color: #3d4c44;
+  font-size: 8px;
+  font-weight: 800;
+}
+.assignment-detail-box span {
+  color: #5d695f;
+  font-size: 8px;
+  line-height: 1.45;
+  word-break: break-word;
+}
 .assignment-agent {
   min-width: 0;
   display: flex;
@@ -1603,6 +1642,52 @@ td > span:not(.status) {
 .assignment-form-panel {
   padding: 20px;
   overflow: visible;
+}
+.selected-visit-panel {
+  display: grid;
+  gap: 16px;
+}
+.selected-visit-summary {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dfe7df;
+  border-radius: 8px;
+  background: #f8faf7;
+}
+.selected-visit-summary > div {
+  display: grid;
+  gap: 3px;
+}
+.selected-visit-summary strong,
+.selected-visit-coordinates strong {
+  font-size: 8px;
+  font-weight: 800;
+  color: #3d4c44;
+}
+.selected-visit-summary span,
+.selected-visit-coordinates span {
+  font-size: 9px;
+  line-height: 1.5;
+  color: #59655d;
+  word-break: break-word;
+}
+.selected-visit-map-panel {
+  border: 1px solid #dfe7df;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #edf2ee;
+}
+.selected-visit-map-panel .location-map {
+  height: 200px;
+}
+.selected-visit-coordinates {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dfe7df;
+  border-radius: 8px;
+  background: #f8faf7;
 }
 .assignment-form-panel form {
   display: grid;

@@ -47,6 +47,33 @@ async function getCurrentLocationOnce(): Promise<GeolocationPosition> {
   });
 }
 
+function calculateDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusMeters = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMeters * c;
+}
+
+function formatDistanceMeters(distanceMeters: number) {
+  if (distanceMeters < 1000) {
+    return `${Math.round(distanceMeters)} metre`;
+  }
+  return `${(distanceMeters / 1000).toFixed(1)} km`;
+}
+
 function RouteState({ loading, error }: { loading: boolean; error: string }) {
   if (loading) {
     return <ActivityIndicator color="#285b43" style={styles.routeLoading} />;
@@ -186,7 +213,23 @@ export function FieldDashboard({
 
   async function handleCheckIn(visitId: string) {
     try {
+      const visit = visits.find((item) => item.id === visitId);
+      if (!visit) {
+        Alert.alert("Ziyaret bulunamadı.");
+        return;
+      }
+
       const position = await getCurrentLocationOnce();
+      const distanceMeters =
+        visit.latitude !== null && visit.longitude !== null
+          ? calculateDistanceMeters(
+              position.coords.latitude,
+              position.coords.longitude,
+              visit.latitude,
+              visit.longitude,
+            )
+          : null;
+
       const updatedVisit = await checkInVisit(
         visitId,
         position.coords.latitude,
@@ -199,7 +242,11 @@ export function FieldDashboard({
       setVisits((current) =>
         current.map((visit) => (visit.id === visitId ? updatedVisit : visit)),
       );
-      Alert.alert("Dükkan giriş kaydı", "Ziyarete giriş yapıldı.");
+
+      Alert.alert(
+        "Dükkan giriş kaydı",
+        `Tam konum gönderildi.\nKoordinat: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}\nMüşteri adresine ${distanceMeters !== null ? formatDistanceMeters(distanceMeters) : "bilinmeyen mesafede"} yakın.`,
+      );
     } catch (locationError) {
       Alert.alert(
         "Konum izni gerekli",
@@ -212,7 +259,23 @@ export function FieldDashboard({
 
   async function handleCheckOut(visitId: string) {
     try {
+      const visit = visits.find((item) => item.id === visitId);
+      if (!visit) {
+        Alert.alert("Ziyaret bulunamadı.");
+        return;
+      }
+
       const position = await getCurrentLocationOnce();
+      const distanceMeters =
+        visit.latitude !== null && visit.longitude !== null
+          ? calculateDistanceMeters(
+              position.coords.latitude,
+              position.coords.longitude,
+              visit.latitude,
+              visit.longitude,
+            )
+          : null;
+
       const updatedVisit = await checkOutVisit(
         visitId,
         position.coords.latitude,
@@ -225,7 +288,11 @@ export function FieldDashboard({
       setVisits((current) =>
         current.map((visit) => (visit.id === visitId ? updatedVisit : visit)),
       );
-      Alert.alert("Dükkan çıkış kaydı", "Ziyaret tamamlandı.");
+
+      Alert.alert(
+        "Dükkan çıkış kaydı",
+        `Tam konum gönderildi.\nKoordinat: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}\nMüşteri adresine ${distanceMeters !== null ? formatDistanceMeters(distanceMeters) : "bilinmeyen mesafede"} yakın.`,
+      );
     } catch (locationError) {
       Alert.alert(
         "Konum izni gerekli",

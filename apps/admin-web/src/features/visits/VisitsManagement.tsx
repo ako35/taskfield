@@ -23,6 +23,7 @@ export function VisitsManagement({
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [assignments, setAssignments] = useState<VisitAssignment[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedVisitId, setSelectedVisitId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +32,9 @@ export function VisitsManagement({
   const token = localStorage.getItem("taskfield_token");
   const selectedCustomer = customers.find(
     (customer) => customer.id === selectedCustomerId,
+  );
+  const selectedVisit = assignments.find(
+    (assignment) => assignment.id === selectedVisitId,
   );
 
   useEffect(() => {
@@ -181,8 +185,33 @@ export function VisitsManagement({
             <div className="assignment-list">
               {assignments.map((assignment) => {
                 const scheduledAt = new Date(assignment.scheduledAt);
+                const checkInAt = assignment.checkInAt
+                  ? new Date(assignment.checkInAt)
+                  : null;
+                const checkOutAt = assignment.checkOutAt
+                  ? new Date(assignment.checkOutAt)
+                  : null;
+                const isSelected = selectedVisitId === assignment.id;
                 return (
-                  <article key={assignment.id}>
+                  <article
+                    key={assignment.id}
+                    className={isSelected ? "assignment-selected" : ""}
+                    onClick={() =>
+                      setSelectedVisitId((current) =>
+                        current === assignment.id ? null : assignment.id,
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedVisitId((current) =>
+                          current === assignment.id ? null : assignment.id,
+                        );
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <div className="assignment-date">
                       <strong>{scheduledAt.getDate()}</strong>
                       <span>
@@ -204,6 +233,53 @@ export function VisitsManagement({
                         {assignment.address}
                       </span>
                       {assignment.notes && <small>{assignment.notes}</small>}
+                      {isSelected && (
+                        <div className="assignment-detail-box">
+                          <div>
+                            <strong>Müşteri konumu:</strong>
+                            <span>
+                              {assignment.latitude !== null &&
+                              assignment.longitude !== null
+                                ? `${assignment.latitude.toFixed(6)}, ${assignment.longitude.toFixed(6)}`
+                                : "Koordinat yok"}
+                            </span>
+                          </div>
+                          <div>
+                            <strong>Giriş zamanı:</strong>
+                            <span>
+                              {checkInAt
+                                ? checkInAt.toLocaleString("tr-TR")
+                                : "Henüz giriş yapılmadı"}
+                            </span>
+                          </div>
+                          <div>
+                            <strong>Giriş konumu:</strong>
+                            <span>
+                              {assignment.checkInLatitude !== null &&
+                              assignment.checkInLongitude !== null
+                                ? `${assignment.checkInLatitude.toFixed(6)}, ${assignment.checkInLongitude.toFixed(6)}`
+                                : "Mobil konum yok"}
+                            </span>
+                          </div>
+                          <div>
+                            <strong>Çıkış zamanı:</strong>
+                            <span>
+                              {checkOutAt
+                                ? checkOutAt.toLocaleString("tr-TR")
+                                : "Henüz çıkış yapılmadı"}
+                            </span>
+                          </div>
+                          <div>
+                            <strong>Çıkış konumu:</strong>
+                            <span>
+                              {assignment.checkOutLatitude !== null &&
+                              assignment.checkOutLongitude !== null
+                                ? `${assignment.checkOutLatitude.toFixed(6)}, ${assignment.checkOutLongitude.toFixed(6)}`
+                                : "Mobil çıkış konumu yok"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="assignment-agent">
                       <span className="avatar">
@@ -228,112 +304,222 @@ export function VisitsManagement({
           )}
         </section>
         <aside className="panel assignment-form-panel">
-          <div className="team-form-title">
-            <span>
-              <Plus size={18} />
-            </span>
-            <div>
-              <h2>Yeni ziyaret ata</h2>
-              <p>Müşteri ve rota bilgilerini girin</p>
-            </div>
-          </div>
-          {(agents.length === 0 || customers.length === 0) && !loading ? (
-            <div className="assignment-no-team">
-              {customers.length === 0 ? (
-                <Store size={20} />
-              ) : (
-                <Users size={20} />
-              )}
-              <strong>
-                {customers.length === 0
-                  ? "Önce müşteri tanımlayın"
-                  : "Önce saha ekibi oluşturun"}
-              </strong>
-              <p>
-                {customers.length === 0
-                  ? "Ziyaret atamak için Müşteriler bölümünden en az bir müşteri ekleyin."
-                  : "Ziyaret atamak için en az bir ekip üyesi gereklidir."}
-              </p>
+          {selectedVisit ? (
+            <div className="selected-visit-panel">
+              <div className="team-form-title">
+                <span>
+                  <MapPinned size={18} />
+                </span>
+                <div>
+                  <h2>{selectedVisit.customerName}</h2>
+                  <p>{selectedVisit.district}</p>
+                </div>
+              </div>
+
+              <div className="selected-visit-summary">
+                <div>
+                  <strong>Planlanan saat</strong>
+                  <span>
+                    {new Date(selectedVisit.scheduledAt).toLocaleString(
+                      "tr-TR",
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <strong>Saha çalışanı</strong>
+                  <span>
+                    {selectedVisit.agentFirstName} {selectedVisit.agentLastName}
+                  </span>
+                </div>
+                <div>
+                  <strong>Durum</strong>
+                  <span>{statusLabels[selectedVisit.status]}</span>
+                </div>
+              </div>
+
+              <div className="selected-visit-map-panel">
+                {selectedVisit.latitude !== null &&
+                selectedVisit.longitude !== null ? (
+                  <LocationMap
+                    position={{
+                      latitude: selectedVisit.latitude,
+                      longitude: selectedVisit.longitude,
+                    }}
+                    label={`${selectedVisit.customerName} müşteri konumu`}
+                  />
+                ) : (
+                  <p className="map-missing-location">
+                    Bu ziyaret için müşteri konumu tanımlanmadı.
+                  </p>
+                )}
+              </div>
+
+              <div className="selected-visit-coordinates">
+                <div>
+                  <strong>Müşteri konumu</strong>
+                  <span>
+                    {selectedVisit.latitude !== null &&
+                    selectedVisit.longitude !== null
+                      ? `${selectedVisit.latitude.toFixed(6)}, ${selectedVisit.longitude.toFixed(6)}`
+                      : "Koordinat yok"}
+                  </span>
+                </div>
+                <div>
+                  <strong>Giriş zamanı</strong>
+                  <span>
+                    {selectedVisit.checkInAt
+                      ? new Date(selectedVisit.checkInAt).toLocaleString(
+                          "tr-TR",
+                        )
+                      : "Henüz giriş yapılmadı"}
+                  </span>
+                </div>
+                <div>
+                  <strong>Giriş konumu</strong>
+                  <span>
+                    {selectedVisit.checkInLatitude !== null &&
+                    selectedVisit.checkInLongitude !== null
+                      ? `${selectedVisit.checkInLatitude.toFixed(6)}, ${selectedVisit.checkInLongitude.toFixed(6)}`
+                      : "Mobil konum yok"}
+                  </span>
+                </div>
+                <div>
+                  <strong>Çıkış zamanı</strong>
+                  <span>
+                    {selectedVisit.checkOutAt
+                      ? new Date(selectedVisit.checkOutAt).toLocaleString(
+                          "tr-TR",
+                        )
+                      : "Henüz çıkış yapılmadı"}
+                  </span>
+                </div>
+                <div>
+                  <strong>Çıkış konumu</strong>
+                  <span>
+                    {selectedVisit.checkOutLatitude !== null &&
+                    selectedVisit.checkOutLongitude !== null
+                      ? `${selectedVisit.checkOutLatitude.toFixed(6)}, ${selectedVisit.checkOutLongitude.toFixed(6)}`
+                      : "Mobil çıkış konumu yok"}
+                  </span>
+                </div>
+              </div>
             </div>
           ) : (
-            <form onSubmit={createAssignment} noValidate>
-              <label>
-                Saha çalışanı
-                <select name="fieldAgentId" required defaultValue="">
-                  <option value="" disabled>
-                    Ekip üyesi seçin
-                  </option>
-                  {agents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.firstName} {agent.lastName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Müşteri
-                <select
-                  name="customerId"
-                  required
-                  value={selectedCustomerId}
-                  onChange={(event) =>
-                    setSelectedCustomerId(event.target.value)
-                  }
-                >
-                  <option value="" disabled>
-                    Kayıtlı müşteri seçin
-                  </option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} · {customer.district}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {selectedCustomer && (
-                <div className="visit-customer-location">
-                  <div className="selected-customer-summary">
-                    <MapPinned size={15} />
-                    <div>
-                      <strong>{selectedCustomer.district}</strong>
-                      <span>{selectedCustomer.address}</span>
-                    </div>
-                  </div>
-                  {selectedCustomer.latitude !== null &&
-                  selectedCustomer.longitude !== null ? (
-                    <LocationMap
-                      position={{
-                        latitude: selectedCustomer.latitude,
-                        longitude: selectedCustomer.longitude,
-                      }}
-                      label={`${selectedCustomer.name} harita konumu`}
-                    />
-                  ) : (
-                    <p className="map-missing-location">
-                      Bu eski müşteri kaydında harita konumu bulunmuyor.
-                    </p>
-                  )}
+            <>
+              <div className="team-form-title">
+                <span>
+                  <Plus size={18} />
+                </span>
+                <div>
+                  <h2>Yeni ziyaret ata</h2>
+                  <p>Müşteri ve rota bilgilerini girin</p>
                 </div>
+              </div>
+              {(agents.length === 0 || customers.length === 0) && !loading ? (
+                <div className="assignment-no-team">
+                  {customers.length === 0 ? (
+                    <Store size={20} />
+                  ) : (
+                    <Users size={20} />
+                  )}
+                  <strong>
+                    {customers.length === 0
+                      ? "Önce müşteri tanımlayın"
+                      : "Önce saha ekibi oluşturun"}
+                  </strong>
+                  <p>
+                    {customers.length === 0
+                      ? "Ziyaret atamak için Müşteriler bölümünden en az bir müşteri ekleyin."
+                      : "Ziyaret atamak için en az bir ekip üyesi gereklidir."}
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={createAssignment} noValidate>
+                  <label>
+                    Saha çalışanı
+                    <select name="fieldAgentId" required defaultValue="">
+                      <option value="" disabled>
+                        Ekip üyesi seçin
+                      </option>
+                      {agents.map((agent) => (
+                        <option key={agent.id} value={agent.id}>
+                          {agent.firstName} {agent.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Müşteri
+                    <select
+                      name="customerId"
+                      required
+                      value={selectedCustomerId}
+                      onChange={(event) =>
+                        setSelectedCustomerId(event.target.value)
+                      }
+                    >
+                      <option value="" disabled>
+                        Kayıtlı müşteri seçin
+                      </option>
+                      {customers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name} · {customer.district}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {selectedCustomer && (
+                    <div className="visit-customer-location">
+                      <div className="selected-customer-summary">
+                        <MapPinned size={15} />
+                        <div>
+                          <strong>{selectedCustomer.district}</strong>
+                          <span>{selectedCustomer.address}</span>
+                        </div>
+                      </div>
+                      {selectedCustomer.latitude !== null &&
+                      selectedCustomer.longitude !== null ? (
+                        <LocationMap
+                          position={{
+                            latitude: selectedCustomer.latitude,
+                            longitude: selectedCustomer.longitude,
+                          }}
+                          label={`${selectedCustomer.name} harita konumu`}
+                        />
+                      ) : (
+                        <p className="map-missing-location">
+                          Bu eski müşteri kaydında harita konumu bulunmuyor.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <label>
+                    Tarih ve saat
+                    <input name="scheduledAt" type="datetime-local" required />
+                  </label>
+                  <label>
+                    Ziyaret notu
+                    <textarea
+                      name="notes"
+                      maxLength={500}
+                      placeholder="Görüşülecek konu veya görev detayı"
+                    />
+                  </label>
+                  {error && <FormMessage type="error">{error}</FormMessage>}
+                  {success && (
+                    <FormMessage type="success">{success}</FormMessage>
+                  )}
+                  <button
+                    className="button"
+                    type="submit"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Atanıyor..." : "Ziyareti ekibe ata"}
+                    <ArrowRight size={17} />
+                  </button>
+                </form>
               )}
-              <label>
-                Tarih ve saat
-                <input name="scheduledAt" type="datetime-local" required />
-              </label>
-              <label>
-                Ziyaret notu
-                <textarea
-                  name="notes"
-                  maxLength={500}
-                  placeholder="Görüşülecek konu veya görev detayı"
-                />
-              </label>
-              {error && <FormMessage type="error">{error}</FormMessage>}
-              {success && <FormMessage type="success">{success}</FormMessage>}
-              <button className="button" type="submit" disabled={submitting}>
-                {submitting ? "Atanıyor..." : "Ziyareti ekibe ata"}
-                <ArrowRight size={17} />
-              </button>
-            </form>
+            </>
           )}
         </aside>
       </div>

@@ -13,6 +13,8 @@ export interface VisitAssignment {
   customerName: string;
   district: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   scheduledAt: string;
   notes: string | null;
   status: VisitStatus;
