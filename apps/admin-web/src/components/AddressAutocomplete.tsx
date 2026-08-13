@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loadGooglePlaces } from "../services/googleMaps";
+import { geocodeAddress, loadGooglePlaces } from "../services/googleMaps";
 import type { MapPosition } from "./LocationMap";
 
 interface SelectedAddress {
@@ -94,17 +94,32 @@ export function AddressAutocomplete({
             await place.fetchFields({
               fields: ["addressComponents", "formattedAddress", "location"],
             });
-            if (!place.formattedAddress || !place.location) return;
-            autocomplete!.value = place.formattedAddress;
-            setAddressValue(place.formattedAddress);
+
+            const resolvedAddress =
+              place.formattedAddress || prediction.text || "";
+            const resolvedDistrict =
+              predictionDistrict || districtFrom(place.addressComponents) || "";
+            const resolvedPosition =
+              place.location &&
+              Number.isFinite(place.location.lat()) &&
+              Number.isFinite(place.location.lng())
+                ? {
+                    latitude: place.location.lat(),
+                    longitude: place.location.lng(),
+                  }
+                : await geocodeAddress(resolvedAddress);
+
+            if (!resolvedAddress || !resolvedPosition) {
+              onErrorRef.current("Seçilen adresin konumu alınamadı.");
+              return;
+            }
+
+            autocomplete!.value = resolvedAddress;
+            setAddressValue(resolvedAddress);
             onSelectRef.current({
-              address: place.formattedAddress,
-              district:
-                predictionDistrict || districtFrom(place.addressComponents),
-              position: {
-                latitude: place.location.lat(),
-                longitude: place.location.lng(),
-              },
+              address: resolvedAddress,
+              district: resolvedDistrict,
+              position: resolvedPosition,
             });
           } catch {
             onErrorRef.current("Seçilen adresin konumu alınamadı.");

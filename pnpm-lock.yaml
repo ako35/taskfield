@@ -9,7 +9,7 @@ importers:
   .:
     devDependencies:
       concurrently:
-        specifier: ^9.2.4
+        specifier: ^9.2.0
         version: 9.2.4
       pnpm:
         specifier: 10.15.0

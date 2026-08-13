@@ -53,6 +53,7 @@ export default function App() {
       user={user}
       onOpenProfile={() => setScreen("profile")}
       onSessionExpired={() => void logout()}
+      onCheckOutComplete={() => setScreen("dashboard")}
     />
   );
 }

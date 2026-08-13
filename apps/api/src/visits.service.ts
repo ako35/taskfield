@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { VisitEventsService } from './visit-events.service';
 import { VisitsRepository } from './visits.repository';
 
 export interface CreateVisitInput {
@@ -20,7 +21,10 @@ export interface VisitLocationInput {
 
 @Injectable()
 export class VisitsService {
-  constructor(private readonly visitsRepository: VisitsRepository) {}
+  constructor(
+    private readonly visitsRepository: VisitsRepository,
+    private readonly visitEventsService?: VisitEventsService,
+  ) {}
 
   async create(managerId: string, input: CreateVisitInput) {
     const fieldAgentId = this.uuid(input.fieldAgentId, 'saha çalışanı');
@@ -91,6 +95,7 @@ export class VisitsService {
     if (!updated) {
       throw new NotFoundException('Giriş kaydı oluşturulamadı.');
     }
+    this.visitEventsService?.emitVisitUpdated(updated.id);
     return { visit: updated };
   }
 
@@ -122,6 +127,7 @@ export class VisitsService {
     if (!updated) {
       throw new NotFoundException('Çıkış kaydı oluşturulamadı.');
     }
+    this.visitEventsService?.emitVisitUpdated(updated.id);
     return { visit: updated };
   }
 

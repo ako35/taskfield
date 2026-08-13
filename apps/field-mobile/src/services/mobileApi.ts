@@ -22,12 +22,74 @@ const storage =
       }
     : SecureStore;
 
-const API_URL = (
-  process.env.EXPO_PUBLIC_API_URL ??
-  (Platform.OS === "android"
-    ? "http://10.0.2.2:3000/api"
-    : "http://localhost:3000/api")
-).replace(/\/+$/, "");
+function buildApiCandidateUrls(): string[] {
+  const urls = new Set<string>();
+
+  const configured = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
+  if (configured) urls.add(configured);
+
+  const browserHost =
+    typeof window !== "undefined" ? window.location?.hostname : undefined;
+
+  if (browserHost && browserHost !== "localhost" && browserHost !== "127.0.0.1") {
+    urls.add(`http://${browserHost}:3000/api`);
+  }
+
+  if (Platform.OS === "android") {
+    urls.add("http://10.0.2.2:3000/api");
+  }
+
+  urls.add("http://localhost:3000/api");
+  urls.add("http://127.0.0.1:3000/api");
+  urls.add("http://192.168.1.33:3000/api");
+
+  return Array.from(urls);
+}
+
+const API_URL_CANDIDATES = buildApiCandidateUrls();
+const API_URL = API_URL_CANDIDATES[0] ?? "http://localhost:3000/api";
+
+async function fetchWithApiFallback<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  let lastError: unknown;
+
+  for (const baseUrl of API_URL_CANDIDATES) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers: {
+          ...(init?.body ? { "Content-Type": "application/json" } : {}),
+          ...(init?.headers ?? {}),
+        },
+      });
+
+      const result = (await response.json()) as T & ApiResult;
+      if (!response.ok) {
+        if (response.status >= 500) {
+          lastError = result;
+          continue;
+        }
+        throw new ApiError(
+          resultMessage(result, "İşlem tamamlanamadı."),
+          response.status,
+        );
+      }
+
+      return result;
+    } catch (error) {
+      lastError = error;
+      continue;
+    }
+  }
+
+  if (lastError instanceof ApiError) throw lastError;
+  throw new ApiError(
+    "Sunucuya ulaşılamadı. API adresini ve ağınızı kontrol edin.",
+    0,
+  );
+}
 
 const TOKEN_KEY = "taskfield_mobile_token";
 const USER_KEY = "taskfield_mobile_user";
@@ -55,67 +117,65 @@ async function authenticatedRequest<T>(path: string, init?: RequestInit) {
   const token = await storage.getItemAsync(TOKEN_KEY);
   if (!token) throw new ApiError("Oturumunuz bulunamadı.", 401);
 
-  try {
-    const response = await fetch(`${API_URL}${path}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...init?.headers,
-      },
-    });
-    const result = (await response.json()) as T & ApiResult;
-    if (!response.ok) {
-      throw new ApiError(
-        resultMessage(result, "İşlem tamamlanamadı."),
-        response.status,
-      );
-    }
-    return result;
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      "Sunucuya ulaşılamadı. API adresini ve ağı kontrol edin.",
-      0,
-    );
-  }
+  return fetchWithApiFallback<T>(path, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(init?.headers ?? {}),
+    },
+  });
 }
 
 export async function loginFieldAgent(email: string, password: string) {
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), password }),
-    });
-    const result = (await response.json()) as ApiResult & {
-      token?: string;
-      user?: MobileUser & { role: string };
-    };
+    let lastError: unknown;
 
-    if (!response.ok || !result.user || !result.token) {
-      throw new ApiError(
-        resultMessage(result, "Giriş yapılamadı."),
-        response.status,
-      );
+    for (const baseUrl of API_URL_CANDIDATES) {
+      try {
+        const response = await fetch(`${baseUrl}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        const result = (await response.json()) as ApiResult & {
+          token?: string;
+          user?: MobileUser & { role: string };
+        };
+
+        if (!response.ok || !result.user || !result.token) {
+          throw new ApiError(
+            resultMessage(result, "Giriş yapılamadı."),
+            response.status,
+          );
+        }
+
+        if (result.user.role !== "field_agent") {
+          throw new ApiError(
+            "Bu uygulama yalnız saha çalışanı hesapları içindir.",
+            403,
+          );
+        }
+
+        await Promise.all([
+          storage.setItemAsync(TOKEN_KEY, result.token),
+          storage.setItemAsync(USER_KEY, JSON.stringify(result.user)),
+        ]);
+        return result.user as MobileUser;
+      } catch (error) {
+        lastError = error;
+      }
     }
 
-    if (result.user.role !== "field_agent") {
-      throw new ApiError(
-        "Bu uygulama yalnız saha çalışanı hesapları içindir.",
-        403,
-      );
-    }
-
-    await Promise.all([
-      storage.setItemAsync(TOKEN_KEY, result.token),
-      storage.setItemAsync(USER_KEY, JSON.stringify(result.user)),
-    ]);
-    return result.user as MobileUser;
+    if (lastError instanceof ApiError) throw lastError;
+    throw new ApiError(
+      "Sunucuya ulaşılamadı. API adresini ve ağınızı kontrol edin.",
+      0,
+    );
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(
-      "Sunucuya ulaşılamadı. API adresini ve ağı kontrol edin.",
+      "Sunucuya ulaşılamadı. API adresini ve ağınızı kontrol edin.",
       0,
     );
   }

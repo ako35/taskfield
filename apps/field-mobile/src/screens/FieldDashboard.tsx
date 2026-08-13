@@ -30,20 +30,94 @@ interface FieldDashboardProps {
   user: MobileUser;
   onOpenProfile: () => void;
   onSessionExpired: () => void;
+  onCheckOutComplete: () => void;
 }
 
-async function getCurrentLocationOnce(): Promise<GeolocationPosition> {
-  return new Promise<GeolocationPosition>((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Konum erişimi desteklenmiyor."));
-      return;
-    }
+const HIGH_ACCURACY_THRESHOLD_METERS = 20;
 
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    });
+async function getCurrentLocationOnce(): Promise<GeolocationPosition> {
+  const options: PositionOptions = {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 0,
+  };
+
+  if (!navigator.geolocation) {
+    throw new Error("Konum erişimi desteklenmiyor.");
+  }
+
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+    let bestPosition: GeolocationPosition | null = null;
+    let watchId: number | null = null;
+    let settled = false;
+
+    const finish = (callback: () => void) => {
+      if (!settled) {
+        settled = true;
+        callback();
+      }
+    };
+
+    const selectBest = (candidate: GeolocationPosition) => {
+      if (
+        !bestPosition ||
+        candidate.coords.accuracy < bestPosition.coords.accuracy
+      ) {
+        bestPosition = candidate;
+      }
+    };
+
+    const onSuccess = (position: GeolocationPosition) => {
+      selectBest(position);
+
+      if (position.coords.accuracy <= HIGH_ACCURACY_THRESHOLD_METERS) {
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+        }
+        finish(() => resolve(position));
+        return;
+      }
+    };
+
+    const onError = (error: GeolocationPositionError) => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      finish(() => reject(new Error(error.message || "Konum alınamadı.")));
+    };
+
+    const firstAttempt = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          onSuccess(position);
+          if (!settled) {
+            watchId = navigator.geolocation.watchPosition(
+              onSuccess,
+              onError,
+              options,
+            );
+          }
+        },
+        onError,
+        options,
+      );
+    };
+
+    firstAttempt();
+
+    setTimeout(() => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+
+      const selectedPosition = bestPosition;
+      if (selectedPosition) {
+        finish(() => resolve(selectedPosition));
+        return;
+      }
+
+      finish(() => reject(new Error("Yüksek hassasiyetli konum alınamadı.")));
+    }, 5000);
   });
 }
 
@@ -176,6 +250,7 @@ export function FieldDashboard({
   user,
   onOpenProfile,
   onSessionExpired,
+  onCheckOutComplete,
 }: FieldDashboardProps) {
   const [visits, setVisits] = useState<VisitAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,7 +320,7 @@ export function FieldDashboard({
 
       Alert.alert(
         "Dükkan giriş kaydı",
-        `Tam konum gönderildi.\nKoordinat: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}\nMüşteri adresine ${distanceMeters !== null ? formatDistanceMeters(distanceMeters) : "bilinmeyen mesafede"} yakın.`,
+        `Yüksek hassasiyetli konum gönderildi.\nKoordinat: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}\nHassasiyet: ±${Math.round(position.coords.accuracy)} m\nMüşteri adresine ${distanceMeters !== null ? formatDistanceMeters(distanceMeters) : "bilinmeyen mesafede"} yakın.`,
       );
     } catch (locationError) {
       Alert.alert(
@@ -291,8 +366,9 @@ export function FieldDashboard({
 
       Alert.alert(
         "Dükkan çıkış kaydı",
-        `Tam konum gönderildi.\nKoordinat: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}\nMüşteri adresine ${distanceMeters !== null ? formatDistanceMeters(distanceMeters) : "bilinmeyen mesafede"} yakın.`,
+        `Yüksek hassasiyetli konum gönderildi.\nKoordinat: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}\nHassasiyet: ±${Math.round(position.coords.accuracy)} m\nMüşteri adresine ${distanceMeters !== null ? formatDistanceMeters(distanceMeters) : "bilinmeyen mesafede"} yakın.`,
       );
+      onCheckOutComplete();
     } catch (locationError) {
       Alert.alert(
         "Konum izni gerekli",

@@ -5,11 +5,12 @@
     "packageManager": "pnpm@10.15.0",
     "scripts": {
         "build": "turbo build",
-        "dev": "turbo dev",
-        "dev:api": "pnpm --filter api dev",
-        "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -ArgumentList '-NoExit','-Command','cd C:/workspace/taskfield; pnpm dev:web'; Start-Process powershell -ArgumentList '-NoExit','-Command','cd C:/workspace/taskfield; pnpm --filter field-mobile web'\"",
-        "dev:mobile": "pnpm --filter field-mobile dev",
-        "dev:web": "pnpm --filter admin-web dev -- --host 0.0.0.0 --port 5173",
+        "dev": "node scripts/kill-ports.js && pnpm exec concurrently --kill-others-on-fail --names api,web,mobile --prefix-colors blue,green,magenta \"pnpm --dir apps/api exec nest start --watch\" \"pnpm --dir apps/admin-web exec vite --host 0.0.0.0 --port 5173\" \"pnpm --dir apps/field-mobile exec expo start --web --port 8081 --non-interactive\"",
+        "dev:api": "pnpm --dir apps/api exec nest start --watch",
+        "dev:all": "pnpm dev",
+        "dev:mobile": "pnpm --dir apps/field-mobile exec expo start --web --port 8081 --non-interactive",
+        "dev:web": "pnpm --dir apps/admin-web exec vite --host 0.0.0.0 --port 5173",
+        "start:dev": "pnpm dev",
         "infra:down": "docker compose down",
         "infra:up": "docker compose up -d",
         "lint": "turbo lint",
@@ -17,6 +18,7 @@
         "typecheck": "turbo typecheck"
     },
     "devDependencies": {
+        "concurrently": "^9.2.0",
         "pnpm": "10.15.0",
         "turbo": "^2.5.6",
         "typescript": "^5.9.2"

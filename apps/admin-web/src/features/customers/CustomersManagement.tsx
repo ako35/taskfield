@@ -27,6 +27,9 @@ export function CustomersManagement({
     null,
   );
   const [query, setQuery] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -54,7 +57,6 @@ export function CustomersManagement({
         ),
       )
     : customers;
-
   useEffect(() => {
     async function loadCustomers() {
       if (!token) {
@@ -166,6 +168,7 @@ export function CustomersManagement({
   }
 
   function editCustomer(customer: Customer) {
+    setSelectedCustomerId(customer.id);
     setEditingCustomerId(customer.id);
     setPosition(
       customer.latitude !== null && customer.longitude !== null
@@ -184,6 +187,7 @@ export function CustomersManagement({
   }
 
   function resetForm() {
+    setSelectedCustomerId(null);
     setEditingCustomerId(null);
     setPosition(null);
     setLocationError("");
@@ -266,65 +270,70 @@ export function CustomersManagement({
               <span>Farklı bir müşteri adı, yetkili veya ilçe deneyin.</span>
             </div>
           ) : (
-            <div className="table-wrap">
-              <table className="customer-table">
-                <thead>
-                  <tr>
-                    <th>Müşteri</th>
-                    <th>Yetkili</th>
-                    <th>İletişim</th>
-                    <th>Konum</th>
-                    <th>Tanımlanma</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCustomers.map((customer) => (
-                    <tr
-                      key={customer.id}
-                      className={
-                        customer.id === editingCustomerId ? "selected" : ""
-                      }
-                      tabIndex={0}
-                      aria-label={`${customer.name} müşterisini düzenle`}
-                      onClick={() => editCustomer(customer)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          editCustomer(customer);
-                        }
-                      }}
-                    >
-                      <td>
-                        <strong>{customer.name}</strong>
-                        {customer.notes && <span>{customer.notes}</span>}
-                      </td>
-                      <td>{customer.contactName}</td>
-                      <td>
-                        <span className="customer-detail">
-                          <Phone size={12} /> {customer.phone}
-                        </span>
-                        {customer.email && (
-                          <span className="customer-detail">
-                            <Mail size={12} /> {customer.email}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <strong className="customer-location">
-                          <MapPin size={12} /> {customer.district}
-                        </strong>
-                        <span>{customer.address}</span>
-                      </td>
-                      <td>
-                        {new Intl.DateTimeFormat("tr-TR").format(
-                          new Date(customer.createdAt),
-                        )}
-                      </td>
+            <>
+              <div className="table-wrap">
+                <table className="customer-table">
+                  <thead>
+                    <tr>
+                      <th>Müşteri</th>
+                      <th>Yetkili</th>
+                      <th>İletişim</th>
+                      <th>Konum</th>
+                      <th>Tanımlanma</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredCustomers.map((customer) => (
+                      <tr
+                        key={customer.id}
+                        className={
+                          customer.id ===
+                          (selectedCustomerId ?? editingCustomerId)
+                            ? "selected"
+                            : ""
+                        }
+                        tabIndex={0}
+                        aria-label={`${customer.name} müşterisini düzenle`}
+                        onClick={() => editCustomer(customer)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            editCustomer(customer);
+                          }
+                        }}
+                      >
+                        <td>
+                          <strong>{customer.name}</strong>
+                          {customer.notes && <span>{customer.notes}</span>}
+                        </td>
+                        <td>{customer.contactName}</td>
+                        <td>
+                          <span className="customer-detail">
+                            <Phone size={12} /> {customer.phone}
+                          </span>
+                          {customer.email && (
+                            <span className="customer-detail">
+                              <Mail size={12} /> {customer.email}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <strong className="customer-location">
+                            <MapPin size={12} /> {customer.district}
+                          </strong>
+                          <span>{customer.address}</span>
+                        </td>
+                        <td>
+                          {new Intl.DateTimeFormat("tr-TR").format(
+                            new Date(customer.createdAt),
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </section>
         <aside className="panel assignment-form-panel customer-form-panel">

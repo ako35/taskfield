@@ -13,6 +13,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { TeamController } from './team.controller';
 import { VisitsController } from './visits.controller';
 import { VisitsRepository } from './visits.repository';
+import { VisitEventsService } from './visit-events.service';
 import { VisitsService } from './visits.service';
 
 @Module({
@@ -41,6 +42,7 @@ import { VisitsService } from './visits.service';
     CustomersService,
     UsersRepository,
     VisitsRepository,
+    VisitEventsService,
     VisitsService,
     JwtAuthGuard,
   ],

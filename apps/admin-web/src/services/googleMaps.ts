@@ -1,12 +1,12 @@
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 
-const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "").trim();
 let configured = false;
 
 function configureGoogleMaps() {
-  if (!apiKey) {
+  if (!apiKey || apiKey.length < 20) {
     throw new Error(
-      "Google Maps API anahtarı tanımlı değil. VITE_GOOGLE_MAPS_API_KEY değerini ayarlayın.",
+      "Google Maps API anahtarı eksik veya geçersiz. VITE_GOOGLE_MAPS_API_KEY değerini kontrol edin.",
     );
   }
   if (!configured) {

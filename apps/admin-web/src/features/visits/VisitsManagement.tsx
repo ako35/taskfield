@@ -37,8 +37,25 @@ export function VisitsManagement({
     (assignment) => assignment.id === selectedVisitId,
   );
 
+  function formatVisitDateTime(value: string | null | undefined) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return new Intl.DateTimeFormat("tr-TR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date);
+  }
+
   useEffect(() => {
-    async function loadAssignmentData() {
+    let active = true;
+
+    const loadAssignmentData = async () => {
       if (!token) {
         onUnauthorized();
         return;
@@ -77,20 +94,44 @@ export function VisitsManagement({
         if (!teamResponse.ok) throw new Error(teamResult.message);
         if (!customersResponse.ok) throw new Error(customersResult.message);
         if (!visitsResponse.ok) throw new Error(visitsResult.message);
+
+        if (!active) return;
         setAgents(teamResult.users ?? []);
         setCustomers(customersResult.customers ?? []);
         setAssignments(visitsResult.visits ?? []);
       } catch (loadError) {
+        if (!active) return;
         setError(
           loadError instanceof Error && loadError.message
             ? loadError.message
             : "Ziyaret atamaları yüklenemedi.",
         );
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
-    }
+    };
+
+    const liveEventsUrl = `${apiUrl}/visits/events${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const eventSource = new EventSource(liveEventsUrl);
+    eventSource.addEventListener("visit-updated", () => {
+      void loadAssignmentData();
+    });
+    eventSource.onerror = () => {
+      // EventSource otomatik yeniden bağlanma yapar; kapatmaya gerek yok.
+    };
+
     void loadAssignmentData();
+    const refreshTimer = window.setInterval(() => {
+      void loadAssignmentData();
+    }, 15000);
+
+    return () => {
+      active = false;
+      eventSource.close();
+      window.clearInterval(refreshTimer);
+    };
   }, [apiUrl, onUnauthorized, token]);
 
   async function createAssignment(event: FormEvent<HTMLFormElement>) {
@@ -185,12 +226,6 @@ export function VisitsManagement({
             <div className="assignment-list">
               {assignments.map((assignment) => {
                 const scheduledAt = new Date(assignment.scheduledAt);
-                const checkInAt = assignment.checkInAt
-                  ? new Date(assignment.checkInAt)
-                  : null;
-                const checkOutAt = assignment.checkOutAt
-                  ? new Date(assignment.checkOutAt)
-                  : null;
                 const isSelected = selectedVisitId === assignment.id;
                 return (
                   <article
@@ -233,53 +268,6 @@ export function VisitsManagement({
                         {assignment.address}
                       </span>
                       {assignment.notes && <small>{assignment.notes}</small>}
-                      {isSelected && (
-                        <div className="assignment-detail-box">
-                          <div>
-                            <strong>Müşteri konumu:</strong>
-                            <span>
-                              {assignment.latitude !== null &&
-                              assignment.longitude !== null
-                                ? `${assignment.latitude.toFixed(6)}, ${assignment.longitude.toFixed(6)}`
-                                : "Koordinat yok"}
-                            </span>
-                          </div>
-                          <div>
-                            <strong>Giriş zamanı:</strong>
-                            <span>
-                              {checkInAt
-                                ? checkInAt.toLocaleString("tr-TR")
-                                : "Henüz giriş yapılmadı"}
-                            </span>
-                          </div>
-                          <div>
-                            <strong>Giriş konumu:</strong>
-                            <span>
-                              {assignment.checkInLatitude !== null &&
-                              assignment.checkInLongitude !== null
-                                ? `${assignment.checkInLatitude.toFixed(6)}, ${assignment.checkInLongitude.toFixed(6)}`
-                                : "Mobil konum yok"}
-                            </span>
-                          </div>
-                          <div>
-                            <strong>Çıkış zamanı:</strong>
-                            <span>
-                              {checkOutAt
-                                ? checkOutAt.toLocaleString("tr-TR")
-                                : "Henüz çıkış yapılmadı"}
-                            </span>
-                          </div>
-                          <div>
-                            <strong>Çıkış konumu:</strong>
-                            <span>
-                              {assignment.checkOutLatitude !== null &&
-                              assignment.checkOutLongitude !== null
-                                ? `${assignment.checkOutLatitude.toFixed(6)}, ${assignment.checkOutLongitude.toFixed(6)}`
-                                : "Mobil çıkış konumu yok"}
-                            </span>
-                          </div>
-                        </div>
-                      )}
                     </div>
                     <div className="assignment-agent">
                       <span className="avatar">
@@ -316,22 +304,18 @@ export function VisitsManagement({
                 </div>
               </div>
 
-              <div className="selected-visit-summary">
-                <div>
+              <div className="selected-visit-summary selected-visit-meta-grid">
+                <div className="meta-card">
                   <strong>Planlanan saat</strong>
-                  <span>
-                    {new Date(selectedVisit.scheduledAt).toLocaleString(
-                      "tr-TR",
-                    )}
-                  </span>
+                  <span>{formatVisitDateTime(selectedVisit.scheduledAt)}</span>
                 </div>
-                <div>
+                <div className="meta-card">
                   <strong>Saha çalışanı</strong>
                   <span>
                     {selectedVisit.agentFirstName} {selectedVisit.agentLastName}
                   </span>
                 </div>
-                <div>
+                <div className="meta-card">
                   <strong>Durum</strong>
                   <span>{statusLabels[selectedVisit.status]}</span>
                 </div>
@@ -345,7 +329,37 @@ export function VisitsManagement({
                       latitude: selectedVisit.latitude,
                       longitude: selectedVisit.longitude,
                     }}
-                    label={`${selectedVisit.customerName} müşteri konumu`}
+                    markers={[
+                      {
+                        latitude: selectedVisit.latitude,
+                        longitude: selectedVisit.longitude,
+                        label: `${selectedVisit.customerName} · atanan konum`,
+                        color: "#0f766e",
+                      },
+                      ...(selectedVisit.checkInLatitude !== null &&
+                      selectedVisit.checkInLongitude !== null
+                        ? [
+                            {
+                              latitude: selectedVisit.checkInLatitude,
+                              longitude: selectedVisit.checkInLongitude,
+                              label: `${selectedVisit.customerName} · giriş konumu`,
+                              color: "#f59e0b",
+                            },
+                          ]
+                        : []),
+                      ...(selectedVisit.checkOutLatitude !== null &&
+                      selectedVisit.checkOutLongitude !== null
+                        ? [
+                            {
+                              latitude: selectedVisit.checkOutLatitude,
+                              longitude: selectedVisit.checkOutLongitude,
+                              label: `${selectedVisit.customerName} · çıkış konumu`,
+                              color: "#22c55e",
+                            },
+                          ]
+                        : []),
+                    ]}
+                    label={`${selectedVisit.customerName} konum haritası`}
                   />
                 ) : (
                   <p className="map-missing-location">
@@ -354,52 +368,21 @@ export function VisitsManagement({
                 )}
               </div>
 
-              <div className="selected-visit-coordinates">
-                <div>
-                  <strong>Müşteri konumu</strong>
-                  <span>
-                    {selectedVisit.latitude !== null &&
-                    selectedVisit.longitude !== null
-                      ? `${selectedVisit.latitude.toFixed(6)}, ${selectedVisit.longitude.toFixed(6)}`
-                      : "Koordinat yok"}
-                  </span>
-                </div>
-                <div>
+              <div className="selected-visit-summary selected-visit-meta-grid">
+                <div className="meta-card">
                   <strong>Giriş zamanı</strong>
                   <span>
                     {selectedVisit.checkInAt
-                      ? new Date(selectedVisit.checkInAt).toLocaleString(
-                          "tr-TR",
-                        )
+                      ? formatVisitDateTime(selectedVisit.checkInAt)
                       : "Henüz giriş yapılmadı"}
                   </span>
                 </div>
-                <div>
-                  <strong>Giriş konumu</strong>
-                  <span>
-                    {selectedVisit.checkInLatitude !== null &&
-                    selectedVisit.checkInLongitude !== null
-                      ? `${selectedVisit.checkInLatitude.toFixed(6)}, ${selectedVisit.checkInLongitude.toFixed(6)}`
-                      : "Mobil konum yok"}
-                  </span>
-                </div>
-                <div>
+                <div className="meta-card">
                   <strong>Çıkış zamanı</strong>
                   <span>
                     {selectedVisit.checkOutAt
-                      ? new Date(selectedVisit.checkOutAt).toLocaleString(
-                          "tr-TR",
-                        )
+                      ? formatVisitDateTime(selectedVisit.checkOutAt)
                       : "Henüz çıkış yapılmadı"}
-                  </span>
-                </div>
-                <div>
-                  <strong>Çıkış konumu</strong>
-                  <span>
-                    {selectedVisit.checkOutLatitude !== null &&
-                    selectedVisit.checkOutLongitude !== null
-                      ? `${selectedVisit.checkOutLatitude.toFixed(6)}, ${selectedVisit.checkOutLongitude.toFixed(6)}`
-                      : "Mobil çıkış konumu yok"}
                   </span>
                 </div>
               </div>
@@ -484,11 +467,19 @@ export function VisitsManagement({
                             latitude: selectedCustomer.latitude,
                             longitude: selectedCustomer.longitude,
                           }}
-                          label={`${selectedCustomer.name} harita konumu`}
+                          markers={[
+                            {
+                              latitude: selectedCustomer.latitude,
+                              longitude: selectedCustomer.longitude,
+                              label: `${selectedCustomer.name} · müşteri konumu`,
+                              color: "#0f766e",
+                            },
+                          ]}
+                          label={`${selectedCustomer.name} müşteri konumu`}
                         />
                       ) : (
                         <p className="map-missing-location">
-                          Bu eski müşteri kaydında harita konumu bulunmuyor.
+                          Bu müşteri için konum tanımlanmadı.
                         </p>
                       )}
                     </div>

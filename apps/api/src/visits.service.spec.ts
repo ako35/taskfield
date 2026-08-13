@@ -8,9 +8,11 @@ describe('VisitsService', () => {
   const customerId = 'e4f2aa78-44e8-487f-93b2-935eb032ec7d';
   let visits: VisitRecord[];
   let service: VisitsService;
+  let eventService: { emitVisitUpdated: jest.Mock };
 
   beforeEach(() => {
     visits = [];
+    eventService = { emitVisitUpdated: jest.fn() };
     const repository = {
       create: (
         visit: Omit<
@@ -86,7 +88,7 @@ describe('VisitsService', () => {
         return visit;
       },
     } as unknown as VisitsRepository;
-    service = new VisitsService(repository);
+    service = new VisitsService(repository, eventService as any);
   });
 
   const assignment = {
@@ -142,6 +144,8 @@ describe('VisitsService', () => {
       },
     });
 
+    expect(eventService.emitVisitUpdated).toHaveBeenCalledWith(created.visit.id);
+
     await expect(
       service.checkOut(agentId, created.visit.id, {
         latitude: 40.988,
@@ -154,5 +158,9 @@ describe('VisitsService', () => {
         checkOutLongitude: 29.026,
       },
     });
+
+    expect(eventService.emitVisitUpdated).toHaveBeenLastCalledWith(
+      created.visit.id,
+    );
   });
 });
