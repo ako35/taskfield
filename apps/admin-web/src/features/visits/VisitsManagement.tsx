@@ -123,14 +123,10 @@ export function VisitsManagement({
     };
 
     void loadAssignmentData();
-    const refreshTimer = window.setInterval(() => {
-      void loadAssignmentData();
-    }, 15000);
 
     return () => {
       active = false;
       eventSource.close();
-      window.clearInterval(refreshTimer);
     };
   }, [apiUrl, onUnauthorized, token]);
 
@@ -333,8 +329,8 @@ export function VisitsManagement({
                       {
                         latitude: selectedVisit.latitude,
                         longitude: selectedVisit.longitude,
-                        label: `${selectedVisit.customerName} · atanan konum`,
-                        color: "#0f766e",
+                        label: `${selectedVisit.customerName} · müşteri konumu`,
+                        color: "#ef4444",
                       },
                       ...(selectedVisit.checkInLatitude !== null &&
                       selectedVisit.checkInLongitude !== null
@@ -472,7 +468,7 @@ export function VisitsManagement({
                               latitude: selectedCustomer.latitude,
                               longitude: selectedCustomer.longitude,
                               label: `${selectedCustomer.name} · müşteri konumu`,
-                              color: "#0f766e",
+                              color: "#ef4444",
                             },
                           ]}
                           label={`${selectedCustomer.name} müşteri konumu`}

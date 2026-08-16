@@ -95,8 +95,12 @@ export function AddressAutocomplete({
               fields: ["addressComponents", "formattedAddress", "location"],
             });
 
+            const predictionText =
+              typeof prediction.text === "string"
+                ? prediction.text
+                : (prediction.text?.toString() ?? "");
             const resolvedAddress =
-              place.formattedAddress || prediction.text || "";
+              place.formattedAddress || predictionText || "";
             const resolvedDistrict =
               predictionDistrict || districtFrom(place.addressComponents) || "";
             const resolvedPosition =

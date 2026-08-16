@@ -5,6 +5,8 @@
   "dependencies": {
     "@taskfield/domain": "workspace:*",
     "expo": "~57.0.12",
+    "expo-dev-client": "~57.0.12",
+    "expo-location": "^57.0.9",
     "expo-secure-store": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -14,6 +16,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "expo-module-scripts": "56.0.3",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -22,7 +25,9 @@
     "android": "expo start --android --port 8081",
     "ios": "expo start --ios --port 8081",
     "web": "expo start --web --port 8081 --non-interactive",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:android": "eas build --platform android --profile production",
+    "build:ios": "eas build --platform ios --profile production"
   },
   "private": true
 }

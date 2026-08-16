@@ -13,6 +13,31 @@ export interface MapMarker {
   color?: string;
 }
 
+function normalizeMarkerColor(color?: string) {
+  return (color ?? "#ef4444").trim();
+}
+
+function toGoogleMarkerIcon(color?: string) {
+  const resolvedColor = normalizeMarkerColor(color);
+  return {
+    path: "M12 0C5.4 0 0 5.4 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.4 18.6 0 12 0Z",
+    fillColor: resolvedColor,
+    fillOpacity: 1,
+    strokeColor: "#ffffff",
+    strokeWeight: 2,
+    scale: 0.85,
+    anchor: new google.maps.Point(12, 32),
+    labelOrigin: new google.maps.Point(12, 12),
+  };
+}
+
+function toGoogleEmbedColor(color?: string) {
+  const resolvedColor = normalizeMarkerColor(color)
+    .replace("#", "")
+    .toUpperCase();
+  return `0x${resolvedColor}`;
+}
+
 const defaultPosition: MapPosition = {
   latitude: 41.0082,
   longitude: 28.9784,
@@ -33,21 +58,45 @@ export function LocationMap({
   const hasGoogleMapsApiKey = Boolean(
     (import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "").trim(),
   );
-  const fallbackTarget = useMemo(() => {
+  const effectiveMarkers = useMemo(() => {
     if (markers && markers.length > 0) {
+      return markers;
+    }
+
+    if (position) {
+      return [
+        { latitude: position.latitude, longitude: position.longitude, label },
+      ];
+    }
+
+    return [];
+  }, [label, markers, position]);
+
+  const fallbackTarget = useMemo(() => {
+    if (effectiveMarkers.length > 0) {
       return {
-        latitude: markers[0].latitude,
-        longitude: markers[0].longitude,
+        latitude: effectiveMarkers[0].latitude,
+        longitude: effectiveMarkers[0].longitude,
       };
     }
 
     return position ?? center;
-  }, [center, markers, position]);
-  const fallbackMapUrl = useMemo(
-    () =>
-      `https://www.google.com/maps?q=${encodeURIComponent(`${fallbackTarget.latitude},${fallbackTarget.longitude}`)}&z=16&output=embed&markers=color:0x0f766e%7C${fallbackTarget.latitude},${fallbackTarget.longitude}`,
-    [fallbackTarget],
-  );
+  }, [center, effectiveMarkers, position]);
+  const fallbackMapUrl = useMemo(() => {
+    const baseUrl = `https://www.google.com/maps?q=${encodeURIComponent(`${fallbackTarget.latitude},${fallbackTarget.longitude}`)}&z=16&output=embed`;
+    if (effectiveMarkers.length === 0) {
+      return `${baseUrl}&markers=color:0x0F766E%7C${fallbackTarget.latitude},${fallbackTarget.longitude}`;
+    }
+
+    const markerQuery = effectiveMarkers
+      .map(
+        (marker) =>
+          `&markers=color:${toGoogleEmbedColor(marker.color)}%7C${marker.latitude},${marker.longitude}`,
+      )
+      .join("");
+
+    return `${baseUrl}${markerQuery}`;
+  }, [effectiveMarkers, fallbackTarget]);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const clickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
@@ -66,7 +115,7 @@ export function LocationMap({
     async function initialize() {
       if (!containerRef.current || mapRef.current) return;
       try {
-        const { mapsLibrary, markerLibrary } = await loadGoogleMaps();
+        const { mapsLibrary } = await loadGoogleMaps();
         if (cancelled || !containerRef.current) return;
 
         const activePosition = position ?? markers?.[0] ?? center;
@@ -120,6 +169,7 @@ export function LocationMap({
                 lng: marker.longitude,
               },
               title: marker.label,
+              icon: toGoogleMarkerIcon(marker.color),
             });
             bounds.extend({ lat: marker.latitude, lng: marker.longitude });
             return markerInstance;
@@ -188,6 +238,7 @@ export function LocationMap({
             lng: marker.longitude,
           },
           title: marker.label,
+          icon: toGoogleMarkerIcon(marker.color),
         });
         return markerInstance;
       });
@@ -210,14 +261,17 @@ export function LocationMap({
     map.setCenter(nextCenter);
     map.setZoom(position ? 16 : 10);
     if (position) {
+      const markerColor = effectiveMarkers[0]?.color ?? "#0f766e";
       if (markerRefs.current[0]) {
         markerRefs.current[0].setPosition(nextCenter);
+        markerRefs.current[0].setIcon(toGoogleMarkerIcon(markerColor));
         markerRefs.current[0].setMap(map);
       } else if (markerConstructorRef.current) {
         markerRefs.current[0] = new markerConstructorRef.current({
           map,
           position: nextCenter,
           title: label,
+          icon: toGoogleMarkerIcon(markerColor),
         });
       }
     } else if (markerRefs.current[0]) {

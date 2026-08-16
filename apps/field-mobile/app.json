@@ -7,9 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.taskfield.fieldmobile",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.taskfield.fieldmobile",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -23,6 +25,12 @@
     },
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a2913c1d-6b6d-469b-8758-ab69e8d939b0"
+      }
+    },
+    "owner": "alikcn35"
   }
 }

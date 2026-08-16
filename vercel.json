@@ -1,0 +1,12 @@
+{
+    "framework": "vite",
+    "installCommand": "corepack enable && pnpm install",
+    "buildCommand": "pnpm --dir apps/admin-web build",
+    "outputDirectory": "apps/admin-web/dist",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}

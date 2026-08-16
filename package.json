@@ -5,6 +5,7 @@
     "packageManager": "pnpm@10.15.0",
     "scripts": {
         "build": "turbo build",
+        "start": "node apps/api/dist/main.js",
         "dev": "node scripts/kill-ports.js && pnpm exec concurrently --kill-others-on-fail --names api,web,mobile --prefix-colors blue,green,magenta \"pnpm --dir apps/api exec nest start --watch\" \"pnpm --dir apps/admin-web exec vite --host 0.0.0.0 --port 5173\" \"pnpm --dir apps/field-mobile exec expo start --web --port 8081 --non-interactive\"",
         "dev:api": "pnpm --dir apps/api exec nest start --watch",
         "dev:all": "pnpm dev",
