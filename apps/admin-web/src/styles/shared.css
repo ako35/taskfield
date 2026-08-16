@@ -1,0 +1,130 @@
+/* App-wide primitives reused by multiple pages/components. */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.button {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid var(--deep-forest);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--deep-forest);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    transform 180ms ease,
+    background 180ms ease;
+}
+.button:hover {
+  transform: translateY(-2px);
+  background: #205940;
+}
+.button-small {
+  min-height: 40px;
+  padding: 0 16px;
+}
+.button-light {
+  width: max-content;
+  border-color: var(--lime);
+  background: var(--lime);
+  color: var(--deep-forest);
+}
+.button-light:hover {
+  background: white;
+}
+.text-button {
+  min-height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  border-bottom: 1px solid #91a398;
+  background: transparent;
+  color: #31483a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  color: #56705f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.kicker > span {
+  width: 20px;
+  height: 2px;
+  background: #91aa46;
+}
+.kicker.light {
+  color: #b9cabb;
+}
+.kicker.light > span {
+  background: var(--lime);
+}
+
+.eyebrow {
+  margin: 0 0 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #dbe8df;
+  color: #285b43;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.field-row label {
+  display: grid;
+  gap: 7px;
+  color: #37443c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 400px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

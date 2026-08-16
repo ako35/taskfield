@@ -1,0 +1,21 @@
+.public-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 19px;
+}
+.public-brand > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--deep-forest);
+  color: var(--lime);
+  font-family: "Newsreader", serif;
+  font-weight: 600;
+}

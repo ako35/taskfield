@@ -16,6 +16,7 @@ import { LocationMap, type MapPosition } from "../../components/LocationMap";
 import { PageHeader } from "../../components/PageHeader";
 import { geocodeAddress } from "../../services/googleMaps";
 import type { Customer } from "../../types";
+import "./CustomersManagement.css";
 
 export function CustomersManagement({
   onUnauthorized,

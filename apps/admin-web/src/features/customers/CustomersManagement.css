@@ -1,0 +1,122 @@
+.customers-content {
+  max-width: 1480px;
+}
+.customer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 410px;
+  align-items: start;
+  gap: 16px;
+}
+.customer-list-panel {
+  min-width: 0;
+  min-height: 430px;
+}
+.customer-map-panel {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e5ebdf;
+}
+.customer-empty-map {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 220px;
+  border: 1px dashed #d5ddd2;
+  border-radius: 8px;
+  background: #f5f7f4;
+  color: #677369;
+  font-size: 11px;
+}
+.customer-panel-header {
+  align-items: center;
+}
+.customer-search {
+  width: min(280px, 44%);
+  height: 37px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d8ddd5;
+  border-radius: 5px;
+  background: white;
+  color: #788079;
+}
+.customer-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  font-size: 9px;
+}
+.customer-search:focus-within {
+  border-color: #5d806a;
+  box-shadow: 0 0 0 3px #e5ede7;
+}
+.customer-table td {
+  vertical-align: top;
+}
+.customer-table tbody tr {
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.customer-table tbody tr:hover,
+.customer-table tbody tr:focus-visible {
+  background: #f3f7f3;
+  outline: 0;
+}
+.customer-table tbody tr.selected {
+  background: #e8f1ea;
+  box-shadow: inset 3px 0 var(--forest);
+}
+.customer-table td > span {
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-detail,
+.customer-location {
+  display: flex !important;
+  align-items: center;
+  gap: 5px;
+}
+.customer-detail + .customer-detail {
+  margin-top: 5px;
+}
+.customer-location {
+  font-size: 10px;
+}
+.customer-form-panel {
+  min-width: 0;
+}
+.customer-edit-close {
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: #f0f3ef;
+  color: #657068;
+}
+.customer-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.customer-form-actions .button {
+  flex: 1;
+}
+.customer-no-result {
+  min-height: 220px;
+}
+
+@media (max-width: 1050px) {
+  .customer-grid {
+    grid-template-columns: 1fr;
+  }
+}

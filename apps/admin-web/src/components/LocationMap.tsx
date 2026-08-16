@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadGoogleMaps } from "../services/googleMaps";
+import "./LocationMap.css";
 
 export interface MapPosition {
   latitude: number;

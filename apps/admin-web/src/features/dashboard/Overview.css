@@ -1,0 +1,131 @@
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.stat-grid article {
+  min-height: 122px;
+  display: flex;
+  gap: 13px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+}
+.stat-icon svg {
+  width: 18px;
+}
+.stat-icon.green {
+  color: #26734e;
+  background: #e0efe6;
+}
+.stat-icon.amber {
+  color: #9a681d;
+  background: #f8ecd3;
+}
+.stat-icon.blue {
+  color: #356a91;
+  background: #e0ecf4;
+}
+.stat-icon.red {
+  color: #a7473c;
+  background: #f4e1de;
+}
+.stat-grid p {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.stat-grid strong {
+  display: block;
+  font-family: "Newsreader", serif;
+  font-size: 25px;
+  line-height: 1.1;
+}
+.stat-grid strong small {
+  color: #9aa098;
+  font-size: 15px;
+}
+.stat-grid em {
+  display: block;
+  margin-top: 8px;
+  color: #7e857c;
+  font-size: 9px;
+  font-style: normal;
+}
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(260px, 0.8fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+.alerts-panel ul {
+  margin: 0;
+  padding: 3px 20px;
+  list-style: none;
+}
+.alerts-panel li {
+  display: flex;
+  gap: 11px;
+  padding: 15px 0;
+  border-bottom: 1px solid #eceee9;
+}
+.alerts-panel li:last-child {
+  border-bottom: 0;
+}
+.alerts-panel strong {
+  display: block;
+  font-size: 10px;
+}
+.alerts-panel li p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.alerts-panel time {
+  color: #a1a69f;
+  font-size: 8px;
+}
+.alert-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+.alert-dot.critical {
+  background: #cb4d40;
+}
+.alert-dot.warning {
+  background: #d79d38;
+}
+.alert-dot.info {
+  background: #4f819f;
+}
+
+@media (max-width: 1050px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+  .stat-grid article {
+    min-height: 104px;
+  }
+}

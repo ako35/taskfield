@@ -1,3 +1,5 @@
+import "./BrandLogo.css";
+
 interface BrandLogoProps {
   onClick: () => void;
 }

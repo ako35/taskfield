@@ -6,6 +6,7 @@ import {
   MapPinned,
   ShoppingCart,
 } from "lucide-react";
+import "./Overview.css";
 
 const summary: DailyVisitSummary = {
   planned: 42,

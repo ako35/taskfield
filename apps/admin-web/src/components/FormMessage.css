@@ -1,0 +1,16 @@
+.form-error {
+  margin: 0;
+  padding: 9px 11px;
+  border-left: 3px solid #bd493e;
+  background: #f8e9e7;
+  color: #8a342d;
+  font-size: 9px;
+}
+.form-success {
+  margin: 0;
+  padding: 9px 11px;
+  border-left: 3px solid #3f865c;
+  background: #e5f1e8;
+  color: #286440;
+  font-size: 9px;
+}

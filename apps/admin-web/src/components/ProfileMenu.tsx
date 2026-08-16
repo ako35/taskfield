@@ -1,6 +1,7 @@
 import { ChevronDown, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ManagerProfile } from "../types";
+import "./ProfileMenu.css";
 
 interface ProfileMenuProps {
   profile: ManagerProfile;

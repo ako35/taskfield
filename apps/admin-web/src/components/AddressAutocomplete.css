@@ -1,0 +1,8 @@
+.address-autocomplete-field > span {
+  display: block;
+}
+.address-autocomplete-field gmp-place-autocomplete {
+  width: 100%;
+  color-scheme: light;
+  font-family: inherit;
+}

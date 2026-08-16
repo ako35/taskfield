@@ -3,7 +3,6 @@ import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
 import type { AppView as View } from "./types";
-import "./App.css";
 
 function App() {
   const [view, setView] = useState<View>("home");

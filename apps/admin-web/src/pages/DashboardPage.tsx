@@ -15,6 +15,8 @@ import { Overview } from "../features/dashboard/Overview";
 import { TeamManagement } from "../features/team/TeamManagement";
 import { VisitsManagement } from "../features/visits/VisitsManagement";
 import type { AppView as View, DashboardSection } from "../types";
+import "../styles/dashboard.css";
+import "./DashboardPage.css";
 
 export function DashboardPage({ goTo }: { goTo: (view: View) => void }) {
   const [section, setSection] = useState<DashboardSection>("overview");

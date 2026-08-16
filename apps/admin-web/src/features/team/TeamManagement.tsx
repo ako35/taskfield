@@ -5,6 +5,7 @@ import { FormMessage } from "../../components/FormMessage";
 import { PageHeader } from "../../components/PageHeader";
 import { PasswordField } from "../../components/PasswordField";
 import type { FieldAgent } from "../../types";
+import "./TeamManagement.css";
 
 export function TeamManagement({
   onUnauthorized,

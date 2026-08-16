@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 import { BrandLogo as Logo } from "../components/BrandLogo";
 import type { AppView as View } from "../types";
+import "./HomePage.css";
 
 export function HomePage({ goTo }: { goTo: (view: View) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);

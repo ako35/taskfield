@@ -12,6 +12,7 @@ import { BrandLogo as Logo } from "../components/BrandLogo";
 import { FormMessage } from "../components/FormMessage";
 import { PasswordField } from "../components/PasswordField";
 import type { AppView as View } from "../types";
+import "./AuthPage.css";
 
 export function AuthPage({
   mode,

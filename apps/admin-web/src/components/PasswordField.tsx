@@ -1,5 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 import type { ComponentProps } from "react";
+import "./PasswordField.css";
 
 interface PasswordFieldProps extends Omit<ComponentProps<"input">, "type"> {
   visible: boolean;

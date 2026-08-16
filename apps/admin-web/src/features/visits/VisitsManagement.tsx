@@ -6,6 +6,7 @@ import { FormMessage } from "../../components/FormMessage";
 import { LocationMap } from "../../components/LocationMap";
 import { PageHeader } from "../../components/PageHeader";
 import type { Customer, FieldAgent, VisitAssignment } from "../../types";
+import "./VisitsManagement.css";
 
 const statusLabels: Record<VisitStatus, string> = {
   planned: "Planlandı",

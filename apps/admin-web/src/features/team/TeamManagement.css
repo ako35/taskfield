@@ -1,0 +1,240 @@
+.team-content {
+  max-width: 1380px;
+}
+.team-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: 16px;
+}
+.team-list-panel {
+  position: relative;
+  min-height: 330px;
+}
+.agent-password-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.agent-password-cell > span {
+  color: #68736b;
+  font-family: monospace;
+  font-size: 12px;
+}
+.agent-password-cell > button {
+  padding: 5px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d5dbd4;
+  border-radius: 5px;
+  background: white;
+  color: var(--forest);
+  font-size: 9px;
+  font-weight: 700;
+}
+.agent-password-cell > button:hover {
+  border-color: #8da395;
+  background: #f4f8f5;
+}
+.password-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: rgba(24, 42, 32, 0.46);
+  backdrop-filter: blur(2px);
+}
+.password-modal {
+  position: relative;
+  width: min(100%, 430px);
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+  border: 1px solid #d6ddd6;
+  border-radius: 7px;
+  background: white;
+  box-shadow: 0 18px 50px rgba(20, 39, 28, 0.22);
+}
+.password-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #717b74;
+}
+.password-modal-close:hover {
+  background: #f0f3ef;
+  color: var(--ink);
+}
+.password-modal-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #e2eee6;
+  color: var(--forest);
+}
+.password-modal-heading strong,
+.password-modal-heading small {
+  display: block;
+}
+.password-modal-heading strong {
+  color: var(--ink);
+  font-family: "Newsreader", serif;
+  font-size: 17px;
+}
+.password-modal-heading small {
+  max-width: 340px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
+.password-editor-controls {
+  display: grid;
+  gap: 12px;
+}
+.password-editor-controls .password-field {
+  width: 100%;
+}
+.password-editor-controls input {
+  width: 100%;
+  height: 39px;
+  padding: 0 44px 0 11px;
+  border: 1px solid #c9d1ca;
+  border-radius: 5px;
+  outline: 0;
+  background: white;
+  color: var(--ink);
+  font-size: 11px;
+}
+.password-editor-controls input:focus {
+  border-color: #5d806a;
+  box-shadow: 0 0 0 3px #e5ede7;
+}
+.password-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.password-save-button,
+.password-cancel-button {
+  min-height: 39px;
+  padding: 0 12px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.password-save-button {
+  border: 1px solid var(--forest);
+  background: var(--forest);
+  color: white;
+}
+.password-save-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.password-cancel-button {
+  border: 1px solid #cfd5cf;
+  background: transparent;
+  color: #657068;
+}
+.password-feedback {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 700;
+}
+.password-feedback.error {
+  color: #a7473c;
+}
+.password-feedback.success {
+  color: #26734e;
+}
+.team-form-panel {
+  padding: 20px;
+  overflow: visible;
+}
+.team-form-panel form {
+  display: grid;
+  gap: 14px;
+}
+.team-form-panel label {
+  display: grid;
+  gap: 7px;
+  color: #37443c;
+  font-size: 10px;
+  font-weight: 700;
+}
+.team-form-panel input {
+  width: 100%;
+  height: 43px;
+  padding: 0 12px;
+  border: 1px solid #cfd5cb;
+  border-radius: 5px;
+  outline: 0;
+  background: white;
+  color: var(--ink);
+  font-size: 11px;
+}
+.team-form-panel input:focus {
+  border-color: #5d806a;
+  box-shadow: 0 0 0 3px #e5ede7;
+}
+.team-form-panel .password-field input {
+  padding-right: 45px;
+}
+.team-form-note {
+  margin: -2px 0 0;
+  color: #7c857e;
+  font-size: 9px;
+  line-height: 1.55;
+}
+.team-form-panel .button {
+  width: 100%;
+  min-height: 43px;
+}
+.team-form-panel .button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+@media (max-width: 1050px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+  .team-form-panel {
+    width: min(100%, 520px);
+  }
+}
+@media (max-width: 720px) {
+  .team-form-panel {
+    width: 100%;
+  }
+  .password-editor-controls {
+    display: grid;
+  }
+  .password-editor-controls .password-field {
+    width: 100%;
+  }
+  .password-modal-backdrop {
+    padding: 14px;
+  }
+  .password-modal {
+    padding: 20px;
+  }
+  .password-modal-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { geocodeAddress, loadGooglePlaces } from "../services/googleMaps";
 import type { MapPosition } from "./LocationMap";
+import "./AddressAutocomplete.css";
 
 interface SelectedAddress {
   address: string;

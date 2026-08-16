@@ -1,3 +1,5 @@
+import "./FormMessage.css";
+
 interface FormMessageProps {
   type: "error" | "success";
   children: string;
