@@ -71,6 +71,7 @@ async function fetchWithApiFallback<T>(
           lastError = result;
           continue;
         }
+        // Sunucu gerçek bir yanıt verdi (ör. 401/403/404); başka adrese düşmeden hatayı bildir.
         throw new ApiError(
           resultMessage(result, "İşlem tamamlanamadı."),
           response.status,
@@ -79,6 +80,7 @@ async function fetchWithApiFallback<T>(
 
       return result;
     } catch (error) {
+      if (error instanceof ApiError) throw error;
       lastError = error;
       continue;
     }
@@ -144,10 +146,14 @@ export async function loginFieldAgent(email: string, password: string) {
         };
 
         if (!response.ok || !result.user || !result.token) {
-          throw new ApiError(
+          const apiError = new ApiError(
             resultMessage(result, "Giriş yapılamadı."),
             response.status,
           );
+          // Sunucu gerçek bir yanıt verdi (ör. yanlış parola); başka adrese düşmeden hatayı bildir.
+          if (response.status < 500) throw apiError;
+          lastError = apiError;
+          continue;
         }
 
         if (result.user.role !== "field_agent") {
@@ -163,6 +169,7 @@ export async function loginFieldAgent(email: string, password: string) {
         ]);
         return result.user as MobileUser;
       } catch (error) {
+        if (error instanceof ApiError && error.status < 500) throw error;
         lastError = error;
       }
     }

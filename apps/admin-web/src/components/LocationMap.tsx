@@ -18,20 +18,6 @@ function normalizeMarkerColor(color?: string) {
   return (color ?? "#ef4444").trim();
 }
 
-function toGoogleMarkerIcon(color?: string) {
-  const resolvedColor = normalizeMarkerColor(color);
-  return {
-    path: "M12 0C5.4 0 0 5.4 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.4 18.6 0 12 0Z",
-    fillColor: resolvedColor,
-    fillOpacity: 1,
-    strokeColor: "#ffffff",
-    strokeWeight: 2,
-    scale: 0.85,
-    anchor: new google.maps.Point(12, 32),
-    labelOrigin: new google.maps.Point(12, 12),
-  };
-}
-
 function toGoogleEmbedColor(color?: string) {
   const resolvedColor = normalizeMarkerColor(color)
     .replace("#", "")
@@ -170,7 +156,6 @@ export function LocationMap({
                 lng: marker.longitude,
               },
               title: marker.label,
-              icon: toGoogleMarkerIcon(marker.color),
             });
             bounds.extend({ lat: marker.latitude, lng: marker.longitude });
             return markerInstance;
@@ -239,7 +224,6 @@ export function LocationMap({
             lng: marker.longitude,
           },
           title: marker.label,
-          icon: toGoogleMarkerIcon(marker.color),
         });
         return markerInstance;
       });
@@ -262,17 +246,14 @@ export function LocationMap({
     map.setCenter(nextCenter);
     map.setZoom(position ? 16 : 10);
     if (position) {
-      const markerColor = effectiveMarkers[0]?.color ?? "#0f766e";
       if (markerRefs.current[0]) {
         markerRefs.current[0].setPosition(nextCenter);
-        markerRefs.current[0].setIcon(toGoogleMarkerIcon(markerColor));
         markerRefs.current[0].setMap(map);
       } else if (markerConstructorRef.current) {
         markerRefs.current[0] = new markerConstructorRef.current({
           map,
           position: nextCenter,
           title: label,
-          icon: toGoogleMarkerIcon(markerColor),
         });
       }
     } else if (markerRefs.current[0]) {
