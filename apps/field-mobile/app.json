@@ -31,6 +31,12 @@
         "projectId": "a2913c1d-6b6d-469b-8758-ab69e8d939b0"
       }
     },
-    "owner": "alikcn35"
+    "owner": "alikcn35",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a2913c1d-6b6d-469b-8758-ab69e8d939b0"
+    }
   }
 }
