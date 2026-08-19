@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { optionalText, requireUuid } from '../../common/validation';
 import { VisitEventsService } from './visit-events.service';
 import { VisitsRepository } from './visits.repository';
 
@@ -27,10 +28,10 @@ export class VisitsService {
   ) {}
 
   async create(managerId: string, input: CreateVisitInput) {
-    const fieldAgentId = this.uuid(input.fieldAgentId, 'saha çalışanı');
-    const customerId = this.uuid(input.customerId, 'müşteri');
+    const fieldAgentId = requireUuid(input.fieldAgentId, 'saha çalışanı');
+    const customerId = requireUuid(input.customerId, 'müşteri');
     const scheduledAt = this.date(input.scheduledAt);
-    const notes = this.optionalText(input.notes, 'Not', 500);
+    const notes = optionalText(input.notes, 'Not', 500);
     const createdAt = new Date().toISOString();
 
     const visit = await this.visitsRepository.create({
@@ -129,36 +130,6 @@ export class VisitsService {
     }
     this.visitEventsService?.emitVisitUpdated(updated.id);
     return { visit: updated };
-  }
-
-  private uuid(value: unknown, label: string) {
-    if (
-      typeof value !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        value,
-      )
-    ) {
-      throw new BadRequestException(`Geçerli bir ${label} seçin.`);
-    }
-    return value;
-  }
-
-  private text(value: unknown, label: string, min: number, max: number) {
-    if (typeof value !== 'string') {
-      throw new BadRequestException(`${label} zorunludur.`);
-    }
-    const text = value.trim();
-    if (text.length < min || text.length > max) {
-      throw new BadRequestException(
-        `${label} ${min}-${max} karakter olmalıdır.`,
-      );
-    }
-    return text;
-  }
-
-  private optionalText(value: unknown, label: string, max: number) {
-    if (value === undefined || value === null || value === '') return null;
-    return this.text(value, label, 1, max);
   }
 
   private date(value: unknown) {

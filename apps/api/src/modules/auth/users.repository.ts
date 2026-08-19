@@ -1,5 +1,6 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
+import { PG_POOL } from '../../common/database.provider';
 
 export type UserRole = 'regional_manager' | 'field_agent';
 
@@ -28,25 +29,8 @@ interface UserRow {
 }
 
 @Injectable()
-export class UsersRepository implements OnModuleInit, OnModuleDestroy {
-  private readonly pool: Pool;
-
-  constructor() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error(
-        'DATABASE_URL tanımlı değil. Kök .env dosyasına PostgreSQL bağlantısını ekleyin.',
-      );
-    }
-
-    this.pool = new Pool({
-      connectionString,
-      ssl:
-        process.env.DATABASE_SSL === 'true'
-          ? { rejectUnauthorized: true }
-          : false,
-    });
-  }
+export class UsersRepository implements OnModuleInit {
+  constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
   async onModuleInit() {
     await this.pool.query(`
@@ -156,10 +140,6 @@ export class UsersRepository implements OnModuleInit, OnModuleDestroy {
       [passwordHash, agentId, managerId],
     );
     return result.rowCount === 1;
-  }
-
-  async onModuleDestroy() {
-    await this.pool.end();
   }
 
   private toRecord(row: UserRow): UserRecord {

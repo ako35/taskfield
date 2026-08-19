@@ -12,8 +12,8 @@ import type {
   LoginInput,
   RegisterInput,
 } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import type { AuthenticatedRequest } from './jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../../common/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {

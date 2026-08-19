@@ -8,6 +8,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+import { CacheService } from '../../common/cache.service';
+import { requireText } from '../../common/validation';
 import { UserRecord, UserRole, UsersRepository } from './users.repository';
 
 const scryptAsync = promisify(scrypt);
@@ -59,15 +61,18 @@ export interface AuthResult {
 
 @Injectable()
 export class AuthService {
+  private static readonly TEAM_CACHE_TTL_SECONDS = 30;
+
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthResult> {
-    const firstName = this.requiredText(input.firstName, 'Ad', 2, 60);
-    const lastName = this.requiredText(input.lastName, 'Soyad', 2, 60);
-    const company = this.requiredText(input.company, 'Şirket adı', 2, 120);
+    const firstName = requireText(input.firstName, 'Ad', 2, 60);
+    const lastName = requireText(input.lastName, 'Soyad', 2, 60);
+    const company = requireText(input.company, 'Şirket adı', 2, 120);
     const email = this.validEmail(input.email);
     const password = this.validPassword(input.password);
 
@@ -141,8 +146,8 @@ export class AuthService {
       throw new UnauthorizedException('Bölge müdürü hesabı bulunamadı.');
     }
 
-    const firstName = this.requiredText(input.firstName, 'Ad', 2, 60);
-    const lastName = this.requiredText(input.lastName, 'Soyad', 2, 60);
+    const firstName = requireText(input.firstName, 'Ad', 2, 60);
+    const lastName = requireText(input.lastName, 'Soyad', 2, 60);
     const email = this.validEmail(input.email);
     const password = this.validPassword(input.password);
     if (await this.usersRepository.findByEmail(email)) {
@@ -161,9 +166,11 @@ export class AuthService {
       createdAt: new Date().toISOString(),
     };
     try {
-      return {
-        user: this.toPublicUser(await this.usersRepository.create(user)),
-      };
+      const created = this.toPublicUser(
+        await this.usersRepository.create(user),
+      );
+      await this.cacheService.invalidate(this.teamCacheKey(managerId));
+      return { user: created };
     } catch (error) {
       const databaseError = error as Error & { code?: string };
       if (databaseError.code === '23505') {
@@ -174,9 +181,25 @@ export class AuthService {
   }
 
   async listFieldAgents(managerId: string) {
-    const users =
+    const cacheKey = this.teamCacheKey(managerId);
+    const cached = await this.cacheService.get<PublicUser[]>(cacheKey);
+    if (cached) {
+      return { users: cached };
+    }
+
+    const agents =
       await this.usersRepository.findFieldAgentsByManager(managerId);
-    return { users: users.map((user) => this.toPublicUser(user)) };
+    const users = agents.map((user) => this.toPublicUser(user));
+    await this.cacheService.set(
+      cacheKey,
+      users,
+      AuthService.TEAM_CACHE_TTL_SECONDS,
+    );
+    return { users };
+  }
+
+  private teamCacheKey(managerId: string) {
+    return `team:${managerId}`;
   }
 
   async resetFieldAgentPassword(
@@ -196,26 +219,8 @@ export class AuthService {
     return { message: 'Çalışanın parolası başarıyla güncellendi.' };
   }
 
-  private requiredText(
-    value: unknown,
-    label: string,
-    min: number,
-    max: number,
-  ) {
-    if (typeof value !== 'string') {
-      throw new BadRequestException(`${label} zorunludur.`);
-    }
-    const text = value.trim();
-    if (text.length < min || text.length > max) {
-      throw new BadRequestException(
-        `${label} ${min}-${max} karakter olmalıdır.`,
-      );
-    }
-    return text;
-  }
-
   private validEmail(value: unknown) {
-    const email = this.requiredText(value, 'E-posta', 5, 254).toLowerCase();
+    const email = requireText(value, 'E-posta', 5, 254).toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new BadRequestException('Geçerli bir e-posta adresi girin.');
     }

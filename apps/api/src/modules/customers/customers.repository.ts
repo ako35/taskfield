@@ -1,5 +1,6 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
+import { PG_POOL } from '../../common/database.provider';
 
 export interface CustomerRecord {
   id: string;
@@ -32,22 +33,8 @@ interface CustomerRow {
 }
 
 @Injectable()
-export class CustomersRepository implements OnModuleInit, OnModuleDestroy {
-  private readonly pool: Pool;
-
-  constructor() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error('DATABASE_URL tanımlı değil.');
-    }
-    this.pool = new Pool({
-      connectionString,
-      ssl:
-        process.env.DATABASE_SSL === 'true'
-          ? { rejectUnauthorized: true }
-          : false,
-    });
-  }
+export class CustomersRepository implements OnModuleInit {
+  constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
   async onModuleInit() {
     await this.pool.query(`
@@ -140,10 +127,6 @@ export class CustomersRepository implements OnModuleInit, OnModuleDestroy {
     );
     const row = result.rows[0];
     return row ? this.toRecord(row) : null;
-  }
-
-  async onModuleDestroy() {
-    await this.pool.end();
   }
 
   private toRecord(row: CustomerRow): CustomerRecord {

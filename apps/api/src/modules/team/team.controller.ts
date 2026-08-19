@@ -10,13 +10,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { AuthService } from '../auth/auth.service';
 import type {
   CreateFieldAgentInput,
   ResetFieldAgentPasswordInput,
-} from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import type { AuthenticatedRequest } from './jwt-auth.guard';
+} from '../auth/auth.service';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../../common/jwt-auth.guard';
 
 @Controller('team')
 @UseGuards(JwtAuthGuard)

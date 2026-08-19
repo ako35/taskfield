@@ -13,8 +13,8 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request, Response } from 'express';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import type { AuthenticatedRequest } from './jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../../common/jwt-auth.guard';
 import { VisitEventsService } from './visit-events.service';
 import type { CreateVisitInput, VisitLocationInput } from './visits.service';
 import { VisitsService } from './visits.service';

@@ -3,18 +3,11 @@ import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { CustomersController } from './customers.controller';
-import { CustomersRepository } from './customers.repository';
-import { CustomersService } from './customers.service';
-import { UsersRepository } from './users.repository';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import { TeamController } from './team.controller';
-import { VisitsController } from './visits.controller';
-import { VisitsRepository } from './visits.repository';
-import { VisitEventsService } from './visit-events.service';
-import { VisitsService } from './visits.service';
+import { CommonModule } from './common/common.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { TeamModule } from './modules/team/team.module';
+import { VisitsModule } from './modules/visits/visits.module';
 
 @Module({
   imports: [
@@ -27,24 +20,13 @@ import { VisitsService } from './visits.service';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '12h' },
     }),
+    CommonModule,
+    AuthModule,
+    CustomersModule,
+    TeamModule,
+    VisitsModule,
   ],
-  controllers: [
-    AppController,
-    AuthController,
-    CustomersController,
-    TeamController,
-    VisitsController,
-  ],
-  providers: [
-    AppService,
-    AuthService,
-    CustomersRepository,
-    CustomersService,
-    UsersRepository,
-    VisitsRepository,
-    VisitEventsService,
-    VisitsService,
-    JwtAuthGuard,
-  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

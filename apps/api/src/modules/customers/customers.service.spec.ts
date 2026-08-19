@@ -8,6 +8,7 @@ import type {
   CustomersRepository,
 } from './customers.repository';
 import { CustomersService } from './customers.service';
+import type { CacheService } from '../../common/cache.service';
 
 describe('CustomersService', () => {
   const repository = {
@@ -15,8 +16,14 @@ describe('CustomersService', () => {
     findByManager: jest.fn(),
     update: jest.fn(),
   };
+  const cacheService = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn(),
+    invalidate: jest.fn(),
+  };
   const service = new CustomersService(
     repository as unknown as CustomersRepository,
+    cacheService as unknown as CacheService,
   );
 
   beforeEach(() => jest.clearAllMocks());

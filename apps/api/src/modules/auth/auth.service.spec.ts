@@ -5,12 +5,18 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
+import type { CacheService } from '../../common/cache.service';
 import type { UserRecord, UsersRepository } from './users.repository';
 
 describe('AuthService', () => {
   let usersRepository: UsersRepository;
   let authService: AuthService;
   let users: Map<string, UserRecord>;
+  const cacheService = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn(),
+    invalidate: jest.fn(),
+  };
 
   beforeEach(() => {
     users = new Map<string, UserRecord>();
@@ -54,6 +60,7 @@ describe('AuthService', () => {
     authService = new AuthService(
       usersRepository,
       new JwtService({ secret: 'unit-test-secret' }),
+      cacheService as unknown as CacheService,
     );
   });
 

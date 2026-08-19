@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { CacheService } from '../../common/cache.service';
+import { optionalText, requireText } from '../../common/validation';
 import { CustomersRepository } from './customers.repository';
 
 export interface CreateCustomerInput {
@@ -21,7 +23,12 @@ export interface CreateCustomerInput {
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly customersRepository: CustomersRepository) {}
+  private static readonly CACHE_TTL_SECONDS = 30;
+
+  constructor(
+    private readonly customersRepository: CustomersRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async create(managerId: string, input: CreateCustomerInput) {
     const customer = {
@@ -32,7 +39,9 @@ export class CustomersService {
     };
 
     try {
-      return { customer: await this.customersRepository.create(customer) };
+      const created = await this.customersRepository.create(customer);
+      await this.cacheService.invalidate(this.cacheKey(managerId));
+      return { customer: created };
     } catch (error) {
       this.throwIfDuplicate(error);
       throw error;
@@ -53,6 +62,7 @@ export class CustomersService {
       if (!customer) {
         throw new NotFoundException('Müşteri bölgenizde bulunamadı.');
       }
+      await this.cacheService.invalidate(this.cacheKey(managerId));
       return { customer };
     } catch (error) {
       this.throwIfDuplicate(error);
@@ -62,44 +72,42 @@ export class CustomersService {
 
   private validatedCustomer(input: CreateCustomerInput) {
     return {
-      name: this.text(input.name, 'Müşteri adı', 2, 120),
-      contactName: this.text(input.contactName, 'Yetkili kişi', 2, 120),
+      name: requireText(input.name, 'Müşteri adı', 2, 120),
+      contactName: requireText(input.contactName, 'Yetkili kişi', 2, 120),
       phone: this.phone(input.phone),
       email: this.email(input.email),
-      district: this.text(input.district, 'İlçe', 2, 80),
-      address: this.text(input.address, 'Açık adres', 5, 300),
+      district: requireText(input.district, 'İlçe', 2, 80),
+      address: requireText(input.address, 'Açık adres', 5, 300),
       latitude: this.coordinate(input.latitude, 'Enlem', -90, 90),
       longitude: this.coordinate(input.longitude, 'Boylam', -180, 180),
-      notes: this.optionalText(input.notes, 'Not', 500),
+      notes: optionalText(input.notes, 'Not', 500),
     };
   }
 
   async list(managerId: string) {
-    return {
-      customers: await this.customersRepository.findByManager(managerId),
-    };
+    const cacheKey = this.cacheKey(managerId);
+    const cached = await this.cacheService.get<
+      Awaited<ReturnType<CustomersRepository['findByManager']>>
+    >(cacheKey);
+    if (cached) {
+      return { customers: cached };
+    }
+
+    const customers = await this.customersRepository.findByManager(managerId);
+    await this.cacheService.set(
+      cacheKey,
+      customers,
+      CustomersService.CACHE_TTL_SECONDS,
+    );
+    return { customers };
   }
 
-  private text(value: unknown, label: string, min: number, max: number) {
-    if (typeof value !== 'string') {
-      throw new BadRequestException(`${label} zorunludur.`);
-    }
-    const text = value.trim();
-    if (text.length < min || text.length > max) {
-      throw new BadRequestException(
-        `${label} ${min}-${max} karakter olmalıdır.`,
-      );
-    }
-    return text;
-  }
-
-  private optionalText(value: unknown, label: string, max: number) {
-    if (value === undefined || value === null || value === '') return null;
-    return this.text(value, label, 1, max);
+  private cacheKey(managerId: string) {
+    return `customers:${managerId}`;
   }
 
   private phone(value: unknown) {
-    const phone = this.text(value, 'Telefon', 7, 30);
+    const phone = requireText(value, 'Telefon', 7, 30);
     if (!/^[+\d][\d\s()-]+$/.test(phone)) {
       throw new BadRequestException('Geçerli bir telefon numarası girin.');
     }
@@ -108,7 +116,7 @@ export class CustomersService {
 
   private email(value: unknown) {
     if (value === undefined || value === null || value === '') return null;
-    const email = this.text(value, 'E-posta', 3, 254).toLocaleLowerCase(
+    const email = requireText(value, 'E-posta', 3, 254).toLocaleLowerCase(
       'tr-TR',
     );
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

@@ -12,8 +12,8 @@ import {
 } from '@nestjs/common';
 import type { CreateCustomerInput } from './customers.service';
 import { CustomersService } from './customers.service';
-import type { AuthenticatedRequest } from './jwt-auth.guard';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import type { AuthenticatedRequest } from '../../common/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 
 @Controller('customers')
 @UseGuards(JwtAuthGuard)

@@ -1,5 +1,6 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
+import { PG_POOL } from '../../common/database.provider';
 
 export type VisitStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -52,22 +53,8 @@ interface VisitRow {
 }
 
 @Injectable()
-export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
-  private readonly pool: Pool;
-
-  constructor() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error('DATABASE_URL tanımlı değil.');
-    }
-    this.pool = new Pool({
-      connectionString,
-      ssl:
-        process.env.DATABASE_SSL === 'true'
-          ? { rejectUnauthorized: true }
-          : false,
-    });
-  }
+export class VisitsRepository implements OnModuleInit {
+  constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
   async onModuleInit() {
     await this.pool.query(`
@@ -245,10 +232,6 @@ export class VisitsRepository implements OnModuleInit, OnModuleDestroy {
     );
     const row = result.rows[0];
     return row ? this.toRecord(row) : null;
-  }
-
-  async onModuleDestroy() {
-    await this.pool.end();
   }
 
   private async findWithAgent(whereClause: string, id: string) {
