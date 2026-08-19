@@ -198,9 +198,18 @@ export function VisitsManagement({
         title="Ziyaret atamaları"
         description="Her müşteriyi konumu ve zamanı ile ekip üyesine atayın."
         meta={
-          <span className="team-count">
-            <MapPinned size={17} /> {assignments.length} atama
-          </span>
+          <div className="assignment-header-meta">
+            <span className="team-count">
+              <MapPinned size={17} /> {assignments.length} atama
+            </span>
+            <button
+              type="button"
+              className="button button-small"
+              onClick={() => setSelectedVisitId(null)}
+            >
+              <Plus size={16} /> Yeni ziyaret ata
+            </button>
+          </div>
         }
       />
       <div className="assignment-grid">

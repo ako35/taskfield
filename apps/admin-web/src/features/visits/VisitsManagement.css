@@ -1,6 +1,11 @@
 .visits-content {
   max-width: 1440px;
 }
+.assignment-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .visit-customer-location {
   display: grid;
   gap: 8px;
