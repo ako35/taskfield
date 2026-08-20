@@ -152,11 +152,19 @@ export class VisitsRepository implements OnModuleInit {
   }
 
   async findByManager(managerId: string): Promise<VisitRecord[]> {
-    return this.findWithAgent('visit.manager_id = $1', managerId);
+    return this.findWithAgent(
+      'visit.manager_id = $1',
+      managerId,
+      'visit.created_at DESC',
+    );
   }
 
   async findByFieldAgent(fieldAgentId: string): Promise<VisitRecord[]> {
-    return this.findWithAgent('visit.field_agent_id = $1', fieldAgentId);
+    return this.findWithAgent(
+      'visit.field_agent_id = $1',
+      fieldAgentId,
+      'visit.scheduled_at ASC',
+    );
   }
 
   async findByIdForFieldAgent(
@@ -234,14 +242,18 @@ export class VisitsRepository implements OnModuleInit {
     return row ? this.toRecord(row) : null;
   }
 
-  private async findWithAgent(whereClause: string, id: string) {
+  private async findWithAgent(
+    whereClause: string,
+    id: string,
+    orderBy: string,
+  ) {
     const result = await this.pool.query<VisitRow>(
       `SELECT visit.*, user_account.first_name AS agent_first_name,
               user_account.last_name AS agent_last_name
        FROM visit_assignments visit
        JOIN users user_account ON user_account.id = visit.field_agent_id
        WHERE ${whereClause}
-       ORDER BY visit.scheduled_at ASC`,
+       ORDER BY ${orderBy}`,
       [id],
     );
     return result.rows.map((row) => this.toRecord(row));

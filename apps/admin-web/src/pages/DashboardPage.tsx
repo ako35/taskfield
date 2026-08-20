@@ -108,8 +108,7 @@ export function DashboardPage({ goTo }: { goTo: (view: View) => void }) {
       <main>
         <header className="topbar">
           <div>
-            <p className="eyebrow">10 Ağustos 2026, Pazartesi</p>
-            <h1>Saha operasyonu</h1>
+            <h1>Ziyaret yönetimi</h1>
           </div>
           <div className="topbar-actions">
             <label className="search">

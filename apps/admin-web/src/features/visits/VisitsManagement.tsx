@@ -53,6 +53,47 @@ export function VisitsManagement({
     }).format(date);
   }
 
+  function toDateInputValue(date: Date) {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  const [dateFrom, setDateFrom] = useState(() => toDateInputValue(new Date()));
+  const [dateTo, setDateTo] = useState(() => toDateInputValue(new Date()));
+
+  function handleDateFromChange(value: string) {
+    setDateFrom(value);
+    if (value && dateTo && value > dateTo) {
+      setDateTo(value);
+    }
+  }
+
+  function handleDateToChange(value: string) {
+    setDateTo(value);
+    if (value && dateFrom && value < dateFrom) {
+      setDateFrom(value);
+    }
+  }
+
+  function resetDateRangeToToday() {
+    const todayValue = toDateInputValue(new Date());
+    setDateFrom(todayValue);
+    setDateTo(todayValue);
+  }
+
+  const filteredAssignments = assignments.filter((assignment) => {
+    const scheduledAt = new Date(assignment.scheduledAt);
+    if (dateFrom && scheduledAt < new Date(`${dateFrom}T00:00:00`)) {
+      return false;
+    }
+    if (dateTo && scheduledAt > new Date(`${dateTo}T23:59:59.999`)) {
+      return false;
+    }
+    return true;
+  });
+
   useEffect(() => {
     let active = true;
 
@@ -198,18 +239,13 @@ export function VisitsManagement({
         title="Ziyaret atamaları"
         description="Her müşteriyi konumu ve zamanı ile ekip üyesine atayın."
         meta={
-          <div className="assignment-header-meta">
-            <span className="team-count">
-              <MapPinned size={17} /> {assignments.length} atama
-            </span>
-            <button
-              type="button"
-              className="button button-small"
-              onClick={() => setSelectedVisitId(null)}
-            >
-              <Plus size={16} /> Yeni ziyaret ata
-            </button>
-          </div>
+          <button
+            type="button"
+            className="button button-small"
+            onClick={() => setSelectedVisitId(null)}
+          >
+            <Plus size={16} /> Yeni ziyaret ata
+          </button>
         }
       />
       <div className="assignment-grid">
@@ -219,6 +255,36 @@ export function VisitsManagement({
               <h2>Planlanan ziyaretler</h2>
               <p>Saha ekibine gönderilen müşteri ziyaretleri</p>
             </div>
+            <span className="team-count">
+              <MapPinned size={17} /> {filteredAssignments.length} atama
+            </span>
+          </div>
+          <div className="assignment-filter-bar">
+            <label>
+              <span>Başlangıç</span>
+              <input
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(event) => handleDateFromChange(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Bitiş</span>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(event) => handleDateToChange(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="button button-small button-light"
+              onClick={resetDateRangeToToday}
+            >
+              Bugün
+            </button>
           </div>
           {loading ? (
             <p className="team-empty">Ziyaretler yükleniyor...</p>
@@ -228,9 +294,15 @@ export function VisitsManagement({
               <strong>Henüz ziyaret ataması yok</strong>
               <span>İlk müşteri ziyaretini yan taraftan planlayın.</span>
             </div>
+          ) : filteredAssignments.length === 0 ? (
+            <div className="team-empty">
+              <MapPinned size={24} />
+              <strong>Bu tarih aralığında ziyaret yok</strong>
+              <span>Farklı bir tarih aralığı seçin veya Bugün'e dönün.</span>
+            </div>
           ) : (
             <div className="assignment-list">
-              {assignments.map((assignment) => {
+              {filteredAssignments.map((assignment) => {
                 const scheduledAt = new Date(assignment.scheduledAt);
                 const isSelected = selectedVisitId === assignment.id;
                 return (

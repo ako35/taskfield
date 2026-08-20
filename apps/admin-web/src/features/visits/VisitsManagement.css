@@ -1,11 +1,6 @@
 .visits-content {
   max-width: 1440px;
 }
-.assignment-header-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 .visit-customer-location {
   display: grid;
   gap: 8px;
@@ -23,6 +18,38 @@
   min-height: 430px;
   padding: 0;
   overflow: hidden;
+}
+.assignment-filter-bar {
+  padding: 12px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #f9faf8;
+}
+.assignment-filter-bar label {
+  display: grid;
+  gap: 4px;
+}
+.assignment-filter-bar label span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.assignment-filter-bar input[type="date"] {
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #d8ddd5;
+  border-radius: 5px;
+  background: white;
+  color: #2a362e;
+  font-size: 11px;
+}
+.assignment-filter-bar .button {
+  min-height: 34px;
 }
 .assignment-list {
   display: grid;
