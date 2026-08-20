@@ -122,6 +122,14 @@ export function Overview({
   const districtsInField = new Set(inFieldNow.map((visit) => visit.district))
     .size;
 
+  const cancelledVisitsToday = todaysVisits
+    .filter((visit) => visit.status === "cancelled")
+    .sort(
+      (first, second) =>
+        new Date(second.scheduledAt).getTime() -
+        new Date(first.scheduledAt).getTime(),
+    );
+
   return (
     <section className="content" id="overview">
       <div className="stat-grid">
@@ -258,6 +266,47 @@ export function Overview({
           )}
         </aside>
       </div>
+
+      <section className="panel cancelled-visits-panel">
+        <div className="panel-header">
+          <div>
+            <h2>İptal edilen ziyaretler</h2>
+            <p>Bugün iptal edilen müşteri ziyaretleri</p>
+          </div>
+          <span className="team-count">
+            <Ban size={17} /> {cancelledVisitsToday.length} iptal
+          </span>
+        </div>
+        {cancelledVisitsToday.length === 0 ? (
+          <p className="team-empty">Bugün iptal edilen ziyaret yok.</p>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Müşteri</th>
+                  <th>Temsilci</th>
+                  <th>Planlanan saat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cancelledVisitsToday.map((visit) => (
+                  <tr key={visit.id}>
+                    <td>
+                      <strong>{visit.customerName}</strong>
+                      <span>{visit.district}</span>
+                    </td>
+                    <td>
+                      {visit.agentFirstName} {visit.agentLastName}
+                    </td>
+                    <td>{formatTime(visit.scheduledAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </section>
   );
 }

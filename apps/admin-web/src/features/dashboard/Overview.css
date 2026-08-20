@@ -68,6 +68,9 @@
   gap: 16px;
   margin-top: 18px;
 }
+.cancelled-visits-panel {
+  margin-top: 16px;
+}
 .field-status-panel ul {
   margin: 0;
   padding: 3px 20px;

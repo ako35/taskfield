@@ -132,6 +132,17 @@ export class VisitsService {
     return { visit: updated };
   }
 
+  async cancel(managerId: string, visitId: string) {
+    const updated = await this.visitsRepository.cancel(managerId, visitId);
+    if (!updated) {
+      throw new NotFoundException(
+        'Yalnız planlanmış ziyaretler bölgenizde iptal edilebilir.',
+      );
+    }
+    this.visitEventsService?.emitVisitUpdated(updated.id);
+    return { visit: updated };
+  }
+
   private date(value: unknown) {
     if (typeof value !== 'string') {
       throw new BadRequestException('Ziyaret tarihi ve saati zorunludur.');

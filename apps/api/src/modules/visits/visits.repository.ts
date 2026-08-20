@@ -242,6 +242,27 @@ export class VisitsRepository implements OnModuleInit {
     return row ? this.toRecord(row) : null;
   }
 
+  async cancel(
+    managerId: string,
+    visitId: string,
+  ): Promise<VisitRecord | null> {
+    const result = await this.pool.query<VisitRow>(
+      `WITH updated AS (
+         UPDATE visit_assignments
+         SET status = 'cancelled'
+         WHERE id = $1 AND manager_id = $2 AND status = 'planned'
+         RETURNING *
+       )
+       SELECT updated.*, user_account.first_name AS agent_first_name,
+              user_account.last_name AS agent_last_name
+       FROM updated
+       JOIN users user_account ON user_account.id = updated.field_agent_id`,
+      [visitId, managerId],
+    );
+    const row = result.rows[0];
+    return row ? this.toRecord(row) : null;
+  }
+
   private async findWithAgent(
     whereClause: string,
     id: string,

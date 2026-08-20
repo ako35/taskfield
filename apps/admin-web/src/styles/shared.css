@@ -45,6 +45,15 @@
 .button-light:hover {
   background: white;
 }
+.button-danger {
+  width: max-content;
+  border-color: var(--danger);
+  background: var(--danger);
+  color: white;
+}
+.button-danger:hover {
+  background: #8f392f;
+}
 .text-button {
   min-height: 44px;
   padding: 0;

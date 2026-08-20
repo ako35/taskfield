@@ -106,4 +106,18 @@ export class VisitsController {
     }
     return this.visitsService.checkOut(request.user.id, visitId, input);
   }
+
+  @Patch(':visitId/cancel')
+  @UseGuards(JwtAuthGuard)
+  cancel(
+    @Req() request: AuthenticatedRequest,
+    @Param('visitId') visitId: string,
+  ) {
+    if (request.user.role !== 'regional_manager') {
+      throw new ForbiddenException(
+        'Ziyaret iptalini yalnız bölge müdürü yapabilir.',
+      );
+    }
+    return this.visitsService.cancel(request.user.id, visitId);
+  }
 }

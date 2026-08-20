@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { VisitRecord, VisitsRepository } from './visits.repository';
 import { VisitsService } from './visits.service';
 
@@ -87,6 +87,17 @@ describe('VisitsService', () => {
         visit.checkOutLongitude = input.longitude;
         return visit;
       },
+      cancel: async (cancelManagerId: string, visitId: string) => {
+        const visit = visits.find(
+          (candidate) =>
+            candidate.managerId === cancelManagerId &&
+            candidate.id === visitId &&
+            candidate.status === 'planned',
+        );
+        if (!visit) return null;
+        visit.status = 'cancelled';
+        return visit;
+      },
     } as unknown as VisitsRepository;
     service = new VisitsService(repository, eventService as any);
   });
@@ -161,6 +172,34 @@ describe('VisitsService', () => {
 
     expect(eventService.emitVisitUpdated).toHaveBeenLastCalledWith(
       created.visit.id,
+    );
+  });
+
+  it('cancels a planned visit but rejects cancelling an already started one', async () => {
+    const created = await service.create(managerId, assignment);
+
+    await expect(
+      service.checkIn(agentId, created.visit.id, {
+        latitude: 40.9876,
+        longitude: 29.0254,
+      }),
+    ).resolves.toMatchObject({ visit: { status: 'in_progress' } });
+
+    await expect(
+      service.cancel(managerId, created.visit.id),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    const other = await service.create(managerId, {
+      ...assignment,
+      scheduledAt: '2026-08-13T09:30:00.000Z',
+    });
+
+    await expect(
+      service.cancel(managerId, other.visit.id),
+    ).resolves.toMatchObject({ visit: { status: 'cancelled' } });
+
+    expect(eventService.emitVisitUpdated).toHaveBeenLastCalledWith(
+      other.visit.id,
     );
   });
 });

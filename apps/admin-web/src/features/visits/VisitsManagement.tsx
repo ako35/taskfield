@@ -8,6 +8,7 @@ import {
   Search,
   Store,
   Users,
+  X,
 } from "lucide-react";
 import { FormMessage } from "../../components/FormMessage";
 import { LocationMap } from "../../components/LocationMap";
@@ -34,6 +35,7 @@ export function VisitsManagement({
   const [selectedVisitId, setSelectedVisitId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
@@ -252,6 +254,47 @@ export function VisitsManagement({
     }
   }
 
+  async function cancelAssignment(visitId: string) {
+    if (!token) {
+      onUnauthorized();
+      return;
+    }
+    setCancellingId(visitId);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await fetch(`${apiUrl}/visits/${visitId}/cancel`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        onUnauthorized();
+        return;
+      }
+      const result = (await response.json()) as {
+        visit?: VisitAssignment;
+        message?: string | string[];
+      };
+      if (!response.ok || !result.visit) {
+        const message = Array.isArray(result.message)
+          ? result.message.join(" ")
+          : result.message;
+        setError(message ?? "Ziyaret iptal edilemedi.");
+        return;
+      }
+      setAssignments((current) =>
+        current.map((assignment) =>
+          assignment.id === result.visit!.id ? result.visit! : assignment,
+        ),
+      );
+      setSuccess("Ziyaret iptal edildi.");
+    } catch {
+      setError("API'ye ulaşılamadı. Lütfen tekrar deneyin.");
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   return (
     <section className="content visits-content" id="visits">
       <PageHeader
@@ -389,9 +432,27 @@ export function VisitsManagement({
                         <small>Saha çalışanı</small>
                       </div>
                     </div>
-                    <span className={`status ${assignment.status}`}>
-                      {statusLabels[assignment.status]}
-                    </span>
+                    <div className="assignment-actions">
+                      <span className={`status ${assignment.status}`}>
+                        {statusLabels[assignment.status]}
+                      </span>
+                      {assignment.status === "planned" && (
+                        <button
+                          type="button"
+                          className="assignment-cancel-button"
+                          disabled={cancellingId === assignment.id}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void cancelAssignment(assignment.id);
+                          }}
+                        >
+                          <X size={12} />
+                          {cancellingId === assignment.id
+                            ? "İptal ediliyor..."
+                            : "İptal et"}
+                        </button>
+                      )}
+                    </div>
                   </article>
                 );
               })}
@@ -493,6 +554,20 @@ export function VisitsManagement({
                   </span>
                 </div>
               </div>
+
+              {selectedVisit.status === "planned" && (
+                <button
+                  type="button"
+                  className="button button-small button-danger"
+                  disabled={cancellingId === selectedVisit.id}
+                  onClick={() => void cancelAssignment(selectedVisit.id)}
+                >
+                  <X size={16} />
+                  {cancellingId === selectedVisit.id
+                    ? "İptal ediliyor..."
+                    : "Ziyareti iptal et"}
+                </button>
+              )}
             </div>
           ) : (
             <>
