@@ -436,22 +436,6 @@ export function VisitsManagement({
                       <span className={`status ${assignment.status}`}>
                         {statusLabels[assignment.status]}
                       </span>
-                      {assignment.status === "planned" && (
-                        <button
-                          type="button"
-                          className="assignment-cancel-button"
-                          disabled={cancellingId === assignment.id}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void cancelAssignment(assignment.id);
-                          }}
-                        >
-                          <X size={12} />
-                          {cancellingId === assignment.id
-                            ? "İptal ediliyor..."
-                            : "İptal et"}
-                        </button>
-                      )}
                     </div>
                   </article>
                 );

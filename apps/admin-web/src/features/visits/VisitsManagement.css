@@ -102,26 +102,6 @@
   align-items: flex-end;
   gap: 8px;
 }
-.assignment-cancel-button {
-  padding: 5px 9px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid #e3c3bf;
-  border-radius: 20px;
-  background: #fbf0ef;
-  color: var(--danger);
-  font-size: 9px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.assignment-cancel-button:hover {
-  background: #f6dedc;
-}
-.assignment-cancel-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 .assignment-date {
   padding-right: 14px;
   display: grid;
