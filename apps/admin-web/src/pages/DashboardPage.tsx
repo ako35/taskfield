@@ -108,7 +108,7 @@ export function DashboardPage({ goTo }: { goTo: (view: View) => void }) {
       <main>
         <header className="topbar">
           <div>
-            <h1>Ziyaret yönetimi</h1>
+            <h1>Saha Operasyonları</h1>
           </div>
           <div className="topbar-actions">
             <label className="search">
@@ -139,7 +139,10 @@ export function DashboardPage({ goTo }: { goTo: (view: View) => void }) {
         ) : section === "visits" ? (
           <VisitsManagement onUnauthorized={logout} />
         ) : (
-          <Overview />
+          <Overview
+            onUnauthorized={logout}
+            onViewAllVisits={() => setSection("visits")}
+          />
         )}
       </main>
     </div>

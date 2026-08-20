@@ -1,61 +1,15 @@
-import type { DailyVisitSummary, VisitStatus } from "@taskfield/domain";
+import type { VisitStatus } from "@taskfield/domain";
+import { useEffect, useState } from "react";
 import {
-  AlertTriangle,
+  Ban,
   ChevronRight,
   ClipboardCheck,
+  Clock,
   MapPinned,
-  ShoppingCart,
 } from "lucide-react";
+import { FormMessage } from "../../components/FormMessage";
+import type { VisitAssignment } from "../../types";
 import "./Overview.css";
-
-const summary: DailyVisitSummary = {
-  planned: 42,
-  completed: 27,
-  inProgress: 6,
-  orderTotal: 184750,
-};
-
-const visits: Array<{
-  customer: string;
-  district: string;
-  representative: string;
-  time: string;
-  status: VisitStatus;
-  order: string;
-}> = [
-  {
-    customer: "Pati Dünyası",
-    district: "Kadıköy",
-    representative: "Ece Yılmaz",
-    time: "09:15",
-    status: "completed",
-    order: "₺12.480",
-  },
-  {
-    customer: "Vetline Klinik",
-    district: "Ataşehir",
-    representative: "Mert Kaya",
-    time: "10:30",
-    status: "in_progress",
-    order: "Bekleniyor",
-  },
-  {
-    customer: "Can Dostlar Pet",
-    district: "Üsküdar",
-    representative: "Selin Akın",
-    time: "11:00",
-    status: "planned",
-    order: "Bekleniyor",
-  },
-  {
-    customer: "Pet Gross",
-    district: "Maltepe",
-    representative: "Can Demir",
-    time: "11:45",
-    status: "cancelled",
-    order: "Sipariş yok",
-  },
-];
 
 const statusLabels: Record<VisitStatus, string> = {
   planned: "Planlandı",
@@ -64,7 +18,110 @@ const statusLabels: Record<VisitStatus, string> = {
   cancelled: "İptal",
 };
 
-export function Overview() {
+function isToday(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function formatTime(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleTimeString("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function Overview({
+  onUnauthorized,
+  onViewAllVisits,
+}: {
+  onUnauthorized: () => void;
+  onViewAllVisits: () => void;
+}) {
+  const [visits, setVisits] = useState<VisitAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
+  const token = localStorage.getItem("taskfield_token");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadVisits() {
+      if (!token) {
+        onUnauthorized();
+        return;
+      }
+      try {
+        const response = await fetch(`${apiUrl}/visits`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.status === 401 || response.status === 403) {
+          onUnauthorized();
+          return;
+        }
+        const result = (await response.json()) as {
+          visits?: VisitAssignment[];
+          message?: string;
+        };
+        if (!response.ok) throw new Error(result.message);
+        if (!active) return;
+        setVisits(result.visits ?? []);
+      } catch (loadError) {
+        if (!active) return;
+        setError(
+          loadError instanceof Error && loadError.message
+            ? loadError.message
+            : "Ziyaret verileri yüklenemedi.",
+        );
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadVisits();
+    return () => {
+      active = false;
+    };
+  }, [apiUrl, onUnauthorized, token]);
+
+  const todaysVisits = visits
+    .filter((visit) => isToday(visit.scheduledAt))
+    .sort(
+      (first, second) =>
+        new Date(first.scheduledAt).getTime() -
+        new Date(second.scheduledAt).getTime(),
+    );
+  const completedToday = todaysVisits.filter(
+    (visit) => visit.status === "completed",
+  ).length;
+  const plannedToday = todaysVisits.filter(
+    (visit) => visit.status === "planned",
+  ).length;
+  const cancelledToday = todaysVisits.filter(
+    (visit) => visit.status === "cancelled",
+  ).length;
+  const completionRate = todaysVisits.length
+    ? Math.round((completedToday / todaysVisits.length) * 100)
+    : 0;
+
+  const inFieldNow = visits
+    .filter((visit) => visit.status === "in_progress")
+    .sort(
+      (first, second) =>
+        new Date(second.checkInAt ?? second.scheduledAt).getTime() -
+        new Date(first.checkInAt ?? first.scheduledAt).getTime(),
+    );
+  const districtsInField = new Set(inFieldNow.map((visit) => visit.district))
+    .size;
+
   return (
     <section className="content" id="overview">
       <div className="stat-grid">
@@ -75,10 +132,10 @@ export function Overview() {
           <div>
             <p>Tamamlanan ziyaret</p>
             <strong>
-              {summary.completed}
-              <small> / {summary.planned}</small>
+              {completedToday}
+              <small> / {todaysVisits.length}</small>
             </strong>
-            <em>Bugünkü planın %64'ü</em>
+            <em>Bugünkü planın %{completionRate}'i</em>
           </div>
         </article>
         <article>
@@ -87,109 +144,118 @@ export function Overview() {
           </span>
           <div>
             <p>Şu an sahada</p>
-            <strong>{summary.inProgress}</strong>
-            <em>4 farklı bölgede</em>
+            <strong>{inFieldNow.length}</strong>
+            <em>
+              {districtsInField > 0
+                ? `${districtsInField} farklı bölgede`
+                : "Sahada kimse yok"}
+            </em>
           </div>
         </article>
         <article>
           <span className="stat-icon blue">
-            <ShoppingCart />
+            <Clock />
           </span>
           <div>
-            <p>Günlük sipariş</p>
-            <strong>₺{summary.orderTotal.toLocaleString("tr-TR")}</strong>
-            <em>Hedefin %72'si</em>
+            <p>Bekleyen ziyaret</p>
+            <strong>{plannedToday}</strong>
+            <em>Bugün için planlandı</em>
           </div>
         </article>
         <article>
           <span className="stat-icon red">
-            <AlertTriangle />
+            <Ban />
           </span>
           <div>
-            <p>Aksiyon bekleyen</p>
-            <strong>8</strong>
-            <em>3 kritik stok bildirimi</em>
+            <p>İptal edilen</p>
+            <strong>{cancelledToday}</strong>
+            <em>Bugünkü ziyaretlerden</em>
           </div>
         </article>
       </div>
 
       <div className="workspace-grid">
-        <section className="panel visits-panel" id="visits">
+        <section className="panel visits-panel">
           <div className="panel-header">
             <div>
               <h2>Bugünün ziyaretleri</h2>
-              <p>Planlanan saha hareketleri ve sipariş durumu</p>
+              <p>Planlanan saha hareketleri ve güncel durumları</p>
             </div>
-            <button type="button">
+            <button type="button" onClick={onViewAllVisits}>
               Tümünü gör <ChevronRight size={16} />
             </button>
           </div>
+          {error && <FormMessage type="error">{error}</FormMessage>}
           <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Müşteri</th>
-                  <th>Temsilci</th>
-                  <th>Saat</th>
-                  <th>Durum</th>
-                  <th>Sipariş</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visits.map((visit) => (
-                  <tr key={visit.customer}>
-                    <td>
-                      <strong>{visit.customer}</strong>
-                      <span>{visit.district}</span>
-                    </td>
-                    <td>{visit.representative}</td>
-                    <td>{visit.time}</td>
-                    <td>
-                      <span className={`status ${visit.status}`}>
-                        {statusLabels[visit.status]}
-                      </span>
-                    </td>
-                    <td className="order-value">{visit.order}</td>
+            {loading ? (
+              <p className="team-empty">Ziyaretler yükleniyor...</p>
+            ) : todaysVisits.length === 0 ? (
+              <p className="team-empty">Bugün için planlanmış ziyaret yok.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Müşteri</th>
+                    <th>Temsilci</th>
+                    <th>Saat</th>
+                    <th>Durum</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {todaysVisits.map((visit) => (
+                    <tr key={visit.id}>
+                      <td>
+                        <strong>{visit.customerName}</strong>
+                        <span>{visit.district}</span>
+                      </td>
+                      <td>
+                        {visit.agentFirstName} {visit.agentLastName}
+                      </td>
+                      <td>{formatTime(visit.scheduledAt)}</td>
+                      <td>
+                        <span className={`status ${visit.status}`}>
+                          {statusLabels[visit.status]}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
 
-        <aside className="panel alerts-panel">
+        <aside className="panel field-status-panel">
           <div className="panel-header">
             <div>
-              <h2>Saha bildirimleri</h2>
-              <p>Son 2 saat</p>
+              <h2>Sahadaki ekip</h2>
+              <p>Şu anda ziyarette olan çalışanlar</p>
             </div>
           </div>
-          <ul>
-            <li>
-              <span className="alert-dot critical" />
-              <div>
-                <strong>Stok kritik seviyede</strong>
-                <p>Pet Gross · Somonlu Kedi Maması 3 kg</p>
-                <time>12 dk önce</time>
-              </div>
-            </li>
-            <li>
-              <span className="alert-dot warning" />
-              <div>
-                <strong>Rakip fiyat değişikliği</strong>
-                <p>Vetline Klinik · %8 fiyat farkı</p>
-                <time>34 dk önce</time>
-              </div>
-            </li>
-            <li>
-              <span className="alert-dot info" />
-              <div>
-                <strong>Yeni sipariş alındı</strong>
-                <p>Pati Dünyası · ₺12.480</p>
-                <time>51 dk önce</time>
-              </div>
-            </li>
-          </ul>
+          {inFieldNow.length === 0 ? (
+            <p className="team-empty">Şu an sahada kimse yok.</p>
+          ) : (
+            <ul>
+              {inFieldNow.map((visit) => (
+                <li key={visit.id}>
+                  <span className="avatar">
+                    {`${visit.agentFirstName[0]}${visit.agentLastName[0]}`.toLocaleUpperCase(
+                      "tr-TR",
+                    )}
+                  </span>
+                  <div>
+                    <strong>
+                      {visit.agentFirstName} {visit.agentLastName}
+                    </strong>
+                    <p>
+                      {visit.customerName} · {visit.district}
+                    </p>
+                    <time>Giriş: {formatTime(visit.checkInAt)}</time>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </aside>
       </div>
     </section>

@@ -1,7 +1,14 @@
 import type { VisitStatus } from "@taskfield/domain";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { ArrowRight, MapPinned, Plus, Store, Users } from "lucide-react";
+import {
+  ArrowRight,
+  MapPinned,
+  Plus,
+  Search,
+  Store,
+  Users,
+} from "lucide-react";
 import { FormMessage } from "../../components/FormMessage";
 import { LocationMap } from "../../components/LocationMap";
 import { PageHeader } from "../../components/PageHeader";
@@ -62,23 +69,36 @@ export function VisitsManagement({
 
   const [dateFrom, setDateFrom] = useState(() => toDateInputValue(new Date()));
   const [dateTo, setDateTo] = useState(() => toDateInputValue(new Date()));
+  const [pendingDateFrom, setPendingDateFrom] = useState(() =>
+    toDateInputValue(new Date()),
+  );
+  const [pendingDateTo, setPendingDateTo] = useState(() =>
+    toDateInputValue(new Date()),
+  );
 
   function handleDateFromChange(value: string) {
-    setDateFrom(value);
-    if (value && dateTo && value > dateTo) {
-      setDateTo(value);
+    setPendingDateFrom(value);
+    if (value && pendingDateTo && value > pendingDateTo) {
+      setPendingDateTo(value);
     }
   }
 
   function handleDateToChange(value: string) {
-    setDateTo(value);
-    if (value && dateFrom && value < dateFrom) {
-      setDateFrom(value);
+    setPendingDateTo(value);
+    if (value && pendingDateFrom && value < pendingDateFrom) {
+      setPendingDateFrom(value);
     }
+  }
+
+  function applyDateRangeFilter() {
+    setDateFrom(pendingDateFrom);
+    setDateTo(pendingDateTo);
   }
 
   function resetDateRangeToToday() {
     const todayValue = toDateInputValue(new Date());
+    setPendingDateFrom(todayValue);
+    setPendingDateTo(todayValue);
     setDateFrom(todayValue);
     setDateTo(todayValue);
   }
@@ -260,27 +280,36 @@ export function VisitsManagement({
             </span>
           </div>
           <div className="assignment-filter-bar">
-            <label>
-              <span>Başlangıç</span>
-              <input
-                type="date"
-                value={dateFrom}
-                max={dateTo || undefined}
-                onChange={(event) => handleDateFromChange(event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Bitiş</span>
-              <input
-                type="date"
-                value={dateTo}
-                min={dateFrom || undefined}
-                onChange={(event) => handleDateToChange(event.target.value)}
-              />
-            </label>
+            <div className="assignment-filter-fields">
+              <label>
+                <span>Başlangıç</span>
+                <input
+                  type="date"
+                  value={pendingDateFrom}
+                  max={pendingDateTo || undefined}
+                  onChange={(event) => handleDateFromChange(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Bitiş</span>
+                <input
+                  type="date"
+                  value={pendingDateTo}
+                  min={pendingDateFrom || undefined}
+                  onChange={(event) => handleDateToChange(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="button button-small"
+                onClick={applyDateRangeFilter}
+              >
+                <Search size={14} /> Ara
+              </button>
+            </div>
             <button
               type="button"
-              className="button button-small button-light"
+              className="button button-small button-light assignment-filter-today"
               onClick={resetDateRangeToToday}
             >
               Bugün

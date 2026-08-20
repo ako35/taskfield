@@ -94,9 +94,6 @@ td > span:not(.status) {
   background: #f2e4e2;
   color: #a7473c;
 }
-.order-value {
-  font-weight: 700;
-}
 
 .team-count {
   padding: 9px 11px;

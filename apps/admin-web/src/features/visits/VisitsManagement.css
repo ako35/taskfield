@@ -24,9 +24,16 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
+  justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid var(--line);
   background: #f9faf8;
+}
+.assignment-filter-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
 }
 .assignment-filter-bar label {
   display: grid;
@@ -50,6 +57,9 @@
 }
 .assignment-filter-bar .button {
   min-height: 34px;
+}
+.assignment-filter-today {
+  margin-left: auto;
 }
 .assignment-list {
   display: grid;
